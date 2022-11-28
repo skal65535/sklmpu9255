@@ -45,13 +45,15 @@ There's also some tests in the tests/ directory, which
 
 ## Data sheets and technical docs
 
-*  https://stanford.edu/class/ee267/misc/MPU-9255-Datasheet.pdf
+* https://stanford.edu/class/ee267/misc/MPU-9255-Datasheet.pdf
 * https://download.mikroe.com/documents/datasheets/ak8963c-datasheet.pdf
 * https://mryslab.github.io/pymata_rh/mpu9250/
+* https://mpu925x-driver.readthedocs.io/en/latest/
 
 ## Links to other libraries
 
 * Waveshare's lib: https://www.waveshare.com/wiki/10_DOF_IMU_Sensor_(C)
+* https://github.com/ceyhunsen/mpu925x-driver
 * https://github.com/hideakitai/MPU9250
 * https://github.com/Tarsier-Marianz/Tarsier_MPU9255
 
