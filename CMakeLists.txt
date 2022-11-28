@@ -31,7 +31,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 option(USE_IMU "Use IMU hardware." ON)
 option(USE_SDL "Use SDL2 for 'show_rpy' example." ON)
-option(USE_THREAD "Use pthread for 'show_rpy' example." ON)
+option(USE_THREAD "Use threaded code for 'show_rpy' example." ON)
 option(FAKE_I2C "Use Fake I2C code (debugging)." OFF)
 option(BUILD_TESTS "build and run tests" ON)
 
@@ -67,9 +67,9 @@ target_include_directories(show_rpy
 
 if(USE_SDL)
   find_package(SDL2)
-  if (FOUND_SDL)
+  if (SDL2_FOUND)
     include_directories(${SDL2_INCLUDE_DIRS})
-    target_compile_definitions(show_rpy PUBLIC HAVE_SDL)
+    target_compile_definitions(show_rpy PUBLIC USE_SDL)
     target_link_libraries(show_rpy LINK_PUBLIC ${SDL2_LIBRARIES})
   endif()
 endif()
@@ -84,8 +84,9 @@ endif()
 
 if(BUILD_TESTS)
   include(FetchContent)
+  # release 1.12.1
   FetchContent_Declare(googletest
-    URL https://github.com/google/googletest/archive/58d77fa8070e8cec2dc1ed015d66b454c8d78850.zip # release 1.12.1
+    URL https://github.com/google/googletest/archive/58d77fa8070e8cec2dc1ed015d66b454c8d78850.zip
     DOWNLOAD_EXTRACT_TIMESTAMP true
   )
   # For Windows: Prevent overriding the parent project's compiler/linker settings

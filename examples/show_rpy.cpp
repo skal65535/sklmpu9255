@@ -32,12 +32,17 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 #include <vector>
 using std::vector;
 
-#ifdef USE_THREAD
+#if defined(USE_THREAD)
 #include <pthread.h>
-#endif
+#endif  // USE_THREAD
+
+#if defined(USE_SDL)
+#include "SDL.h"
+#endif  // USE_SDL
 
 int what = 0;   // 0=raw RPY, 1: angles, 2:accel, 3:mag
 bool mag = false;   // show magneto field
@@ -75,9 +80,12 @@ void* runThread(void* ptr) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+
 #if defined(USE_SDL)
+template<typename T> T clamp(T v, T m, T M) { return std::min(std::max(v, m), M); }
 class Window {
-  Window(int W, int H) {
+ public:
+  Window(int W, int H, bool fullscreen = false) {
     screen_ = SDL_CreateWindow(
         "Visu",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -90,7 +98,7 @@ class Window {
     SDL_RenderClear(renderer_);
     surface_ = SDL_CreateTexture(renderer_,
                                  SDL_PIXELFORMAT_ARGB8888,
-                                 SDL_TEXTUREACCESS_STREAMING, w, h);
+                                 SDL_TEXTUREACCESS_STREAMING, W, H);
     if (surface_ == NULL) return;
     w_ = W;
     h_ = H;
@@ -98,10 +106,10 @@ class Window {
     if (buf_ != NULL) flush_events();
   }
   uint32_t* lock() const {
-    if (renderer_ != NULL) SDL_RenderClear(renderer_);
+    if (buf_ != nullptr) memset(buf_, 0, w_ * h_ * sizeof(*buf_));
     return buf_;
   }
-  bool unlocak() {
+  bool unlock() {
     if (renderer_ == NULL) return false;
     if (surface_ == NULL) return false;
     if (buf_ == NULL) return false;
@@ -118,6 +126,7 @@ class Window {
     if (surface_ != NULL) SDL_DestroyTexture(surface_);
     if (renderer_ != NULL) SDL_DestroyRenderer(renderer_);
     if (screen_ != NULL) SDL_DestroyWindow(screen_);
+    SDL_Quit();
   }
   void flush_events() {
     key_ = -1;
@@ -129,8 +138,11 @@ class Window {
   uint32_t* row(int y) { return buf_ + y * w_; }
   void draw_v(int y0, int y1, int x, uint32_t c) {
     if (y1 < y0) std::swap(y0, y1);
-    for (int y = y0; y <= y1; ++r) s->row(y)[x] = c;
+    for (int y = y0; y <= y1; ++y) row(y)[x] = c;
   }
+  int w() const { return w_; }
+  int h() const { return h_; }
+  int key() const { return key_; }
 
  private:
   int w_ = 0, h_ = 0;
@@ -261,7 +273,7 @@ int main(int argc, char **argv) {
 
   printf("SHOWING %s\n", kWhat[what]);
   mpu.print();
-  while (true) {
+  while (cnt > 0) {
     if (show) {
 #if defined(USE_SDL)
       switch (surf->key()) {
@@ -291,22 +303,23 @@ int main(int argc, char **argv) {
         break;
       }
       if (!surf->lock()) continue;
+      const int H = surf->h() - 1;
       int idx = buf_pos;
       static float kUnits[4] = { 0.01f, 1. / 360., 1. / 200., 30. / 200. };
-      const float scale = surf->h_ * kUnits[what];
-      const float mid = (what == 1) ? surf->h_ - 1.f : surf->h_ * 0.5f;
+      const float scale = H * kUnits[what];
+      const float mid = (what == 1) ? H : H / 2;
       int last_v0 = 0, last_v1 = 0, last_v2 = 0;
       for (int x = 0; x < buf_len; ++x) {
-        const int v0 = clamp((int)(mid - buf[idx].v[0] * scale), 0, surf->h_ - 1);
-        const int v1 = clamp((int)(mid - buf[idx].v[1] * scale), 0, surf->h_ - 1);
-        const int v2 = clamp((int)(mid - buf[idx].v[2] * scale), 0, surf->h_ - 1);
+        const int v0 = clamp((int)(mid - buf[idx].v[0] * scale), 0, H);
+        const int v1 = clamp((int)(mid - buf[idx].v[1] * scale), 0, H);
+        const int v2 = clamp((int)(mid - buf[idx].v[2] * scale), 0, H);
         if (show_v0) surf->draw_v(last_v0, v0, x, 0xffff00ffu);
         if (show_v1) surf->draw_v(last_v1, v1, x, 0xffffff00u);
         if (show_v2) surf->draw_v(last_v2, v2, x, 0xff00ffffu);
         last_v0 = v0;
         last_v1 = v1;
         last_v2 = v2;
-        if (what != 1) surf->row(surf->h_ >> 1)[x] = 0xffffffffu;
+        if (what != 1) surf->row(H >> 1)[x] = 0xffffffffu;
         if (++idx >= buf_len) idx = 0;
       }
       surf->unlock();
