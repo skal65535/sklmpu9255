@@ -86,8 +86,9 @@ template<typename T> T clamp(T v, T m, T M) { return std::min(std::max(v, m), M)
 class Window {
  public:
   Window(int W, int H, bool fullscreen = false) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) return;
     screen_ = SDL_CreateWindow(
-        "Visu",
+        "sklmpu9255 Visu",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         W, H, fullscreen ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_RESIZABLE);
     if (screen_ == NULL) return;
