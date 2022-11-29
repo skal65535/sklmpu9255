@@ -49,7 +49,10 @@ endif()
 
 ################################################################################
 
-add_library(sklmpu9255 STATIC src/sklmpu9255.cpp)
+add_library(sklmpu9255 STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu.cpp
+                              ${CMAKE_CURRENT_SOURCE_DIR}/src/ak8963.cpp
+                              ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu925x.cpp
+                              ${CMAKE_CURRENT_SOURCE_DIR}/src/qfilter.cpp)
 target_include_directories(sklmpu9255
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 

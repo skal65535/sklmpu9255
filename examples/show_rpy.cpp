@@ -8,10 +8,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -57,15 +57,14 @@ skl::MPU mpu;
 
 #if defined(USE_THREAD)
 void* runThread(void* ptr) {
-  const int buf_len = *(int*)ptr;  
+  const int buf_len = *(int*)ptr;
   buf_pos = 0;
   while (run_thread) {
     const bool ok =
         (what == 0) ? mpu.gyro(buf[buf_pos].v) :
         (what == 1) ? mpu.get_rpy(buf[buf_pos].v) :
-        (what == 2) ? mpu.gyro(buf[buf_pos].v) :
+        (what == 2) ? mpu.mag(buf[buf_pos].v) :
         (what == 3) ? mpu.accel(buf[buf_pos].v) : false;
-    ++mpu;
     if (ok) {
       if (++buf_pos == buf_len) buf_pos = 0;
       usleep(delay_ms * 1000);
@@ -188,22 +187,22 @@ int main(int argc, char **argv) {
   int cnt = 300000;
   int W = 0, H = 0;
   bool ahrs = false;
-  int avg_size = 0;   /* off */
+  int avg_size = 8;   /* 0=off */
   bool show_v0 = true, show_v1 = true, show_v2 = true;
   bool show_mag = false;
   int a_scale = 0, g_scale = 0;
   float calibrate = 1.f;
-  static const skl::accel_full_scale_t kAScales[] = {
-    skl::ACCEL_FULL_SCALE_2G,
-    skl::ACCEL_FULL_SCALE_4G,
-    skl::ACCEL_FULL_SCALE_8G,
-    skl::ACCEL_FULL_SCALE_16G
+  static const skl::MPU925x::accel_full_scale_t kAScales[] = {
+    skl::MPU925x::ACCEL_FULL_SCALE_2G,
+    skl::MPU925x::ACCEL_FULL_SCALE_4G,
+    skl::MPU925x::ACCEL_FULL_SCALE_8G,
+    skl::MPU925x::ACCEL_FULL_SCALE_16G
   };
-  static const skl::gyro_full_scale_t kGScales[] = {
-    skl::GYRO_FULL_SCALE_250DPS,
-    skl::GYRO_FULL_SCALE_500DPS,
-    skl::GYRO_FULL_SCALE_1000DPS,
-    skl::GYRO_FULL_SCALE_2000DPS
+  static const skl::MPU925x::gyro_full_scale_t kGScales[] = {
+    skl::MPU925x::GYRO_FULL_SCALE_250DPS,
+    skl::MPU925x::GYRO_FULL_SCALE_500DPS,
+    skl::MPU925x::GYRO_FULL_SCALE_1000DPS,
+    skl::MPU925x::GYRO_FULL_SCALE_2000DPS
   };
   for (int c = 1; c < argc; ++c) {
     if (!strcmp(argv[c], "-noshow")) {
@@ -237,28 +236,24 @@ int main(int argc, char **argv) {
   if (W == 0) W = 600;
   if (H == 0) H = 1 + (W / 3);
 
-  if (!mpu.init(ahrs, avg_size)) {
-    fprintf(stderr, "init failed.\n");
+  if (!mpu.init(calibrate, ahrs, avg_size)) {
+    fprintf(stderr, "init/calibration failed.\n");
     return 1;
   }
-  if (!mpu.calibrate_mag(calibrate) || !mpu.calibrate_gyro()) {
-    fprintf(stderr, "Calibration failed!\n");
-  }
-  mpu.set_accel_scale(kAScales[a_scale]);
-  mpu.set_gyro_scale(kGScales[g_scale]);
+  mpu.set_full_scales(kAScales[a_scale], kGScales[g_scale]);
 
 #if defined(USE_SDL)
-  Window* surf = nullptr;
+  Window* window = nullptr;
   if (show) {
-    surf = new Window(W, H);
-    if (surf == nullptr) {
+    window = new Window(W, H);
+    if (window == nullptr) {
       fprintf(stderr, "Can't init video mode\n");
       show = false;
     }
   }
 #else
   show = false;
-  uint32_t* surf = nullptr;  // decoy
+  uint32_t* window = nullptr;  // decoy
 #endif  // USE_SDL
 
   const int buf_len = W;
@@ -277,7 +272,7 @@ int main(int argc, char **argv) {
   while (cnt > 0) {
     if (show) {
 #if defined(USE_SDL)
-      switch (surf->key()) {
+      switch (window->key()) {
         default: case -1: break;
         case 'q': cnt = 0; break;
         case 'a': show_v0 = !show_v0; break;
@@ -294,17 +289,19 @@ int main(int argc, char **argv) {
         case 'h': print_help(); break;
         case '1':
           a_scale = (a_scale + 1) % 4;
-          mpu.set_accel_scale(kAScales[a_scale]);
+          mpu.set_full_scales(kAScales[a_scale],
+                              kGScales[g_scale]);
           printf("a_scale=%d\n", a_scale);
         break;
         case '2':
           g_scale = (g_scale + 1) % 4;
-          mpu.set_gyro_scale(kGScales[g_scale]);
+          mpu.set_full_scales(kAScales[a_scale],
+                              kGScales[g_scale]);
           printf("g_scale=%d\n", g_scale);
         break;
       }
-      if (!surf->lock()) continue;
-      const int H = surf->h() - 1;
+      if (!window->lock()) continue;
+      const int H = window->h() - 1;
       int idx = buf_pos;
       static float kUnits[4] = { 0.01f, 1. / 360., 1. / 200., 30. / 200. };
       const float scale = H * kUnits[what];
@@ -314,16 +311,16 @@ int main(int argc, char **argv) {
         const int v0 = clamp((int)(mid - buf[idx].v[0] * scale), 0, H);
         const int v1 = clamp((int)(mid - buf[idx].v[1] * scale), 0, H);
         const int v2 = clamp((int)(mid - buf[idx].v[2] * scale), 0, H);
-        if (show_v0) surf->draw_v(last_v0, v0, x, 0xffff00ffu);
-        if (show_v1) surf->draw_v(last_v1, v1, x, 0xffffff00u);
-        if (show_v2) surf->draw_v(last_v2, v2, x, 0xff00ffffu);
+        if (show_v0) window->draw_v(last_v0, v0, x, 0xffff00ffu);
+        if (show_v1) window->draw_v(last_v1, v1, x, 0xffffff00u);
+        if (show_v2) window->draw_v(last_v2, v2, x, 0xff00ffffu);
         last_v0 = v0;
         last_v1 = v1;
         last_v2 = v2;
-        if (what != 1) surf->row(H >> 1)[x] = 0xffffffffu;
+        if (what != 1) window->row(H >> 1)[x] = 0xffffffffu;
         if (++idx >= buf_len) idx = 0;
       }
-      surf->unlock();
+      window->unlock();
 #endif  // USE_SDL
     } else {
       static int last_idx = 0;
@@ -341,6 +338,6 @@ int main(int argc, char **argv) {
   pthread_join(t_id, NULL);
   fprintf(stderr, "Thread STOPPING\n");
 #endif
-  delete surf;
+  delete window;
   return 0;
 }

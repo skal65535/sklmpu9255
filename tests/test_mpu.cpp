@@ -8,10 +8,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -57,12 +57,10 @@ TEST(Basic, TestMPU) {
     const float T = mpu.temperature();
     printf("Temperature: %.2f\n", T);
 
-    if (n == 20) mpu.set_gyro_scale(skl::GYRO_FULL_SCALE_500DPS);
-    if (n == 40) mpu.set_gyro_scale(skl::GYRO_FULL_SCALE_1000DPS);
-
-    if (n == 30) mpu.set_accel_scale(skl::ACCEL_FULL_SCALE_4G);
-    if (n == 50) mpu.set_accel_scale(skl::ACCEL_FULL_SCALE_8G);
-    ++mpu;
+    if (n == 20) mpu.set_full_scales(skl::ACCEL_FULL_SCALE_4G,
+                                     skl::GYRO_FULL_SCALE_500DPS);
+    if (n == 40) mpu.set_full_scales(skl::ACCEL_FULL_SCALE_8G,
+                                     skl::GYRO_FULL_SCALE_2000DPS);
   }
 }
 
