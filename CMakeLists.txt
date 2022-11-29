@@ -49,9 +49,20 @@ endif()
 
 ################################################################################
 
-add_library(sklmpu9255 OBJECT src/sklmpu9255.cpp)
+add_library(sklmpu9255 STATIC src/sklmpu9255.cpp)
 target_include_directories(sklmpu9255
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Make sure the OBJECT libraries are built with position independent code (it is
+# not ON by default).
+set_target_properties(sklmpu9255 PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+# Set the version numbers.
+set_target_properties(sklmpu9255 PROPERTIES VERSION ${PROJECT_VERSION}
+                                 SOVERSION ${PROJECT_VERSION})
+target_include_directories(
+  sklmpu9255 INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+             $<INSTALL_INTERFACE:include>)
 
 if(FAKE_I2C)
   target_compile_definitions(sklmpu9255 PUBLIC FAKE_I2C)
@@ -111,6 +122,11 @@ endif()
 ################################################################################
 # install
 
+# Install the different headers and libraries.
+install(
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/sklmpu9255.h
+  DESTINATION include)
+
 install(TARGETS sklmpu9255
         EXPORT ${PROJECT_NAME}_targets
         LIBRARY DESTINATION lib
@@ -128,7 +144,7 @@ install(
 # Create the CMake version file.
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/sklmpu9255ConfigVersion.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY AnyNewerVersion)
 
