@@ -57,10 +57,10 @@ TEST(Basic, TestMPU) {
     const float T = mpu.temperature();
     printf("Temperature: %.2f\n", T);
 
-    if (n == 20) mpu.set_full_scales(skl::ACCEL_FULL_SCALE_4G,
-                                     skl::GYRO_FULL_SCALE_500DPS);
-    if (n == 40) mpu.set_full_scales(skl::ACCEL_FULL_SCALE_8G,
-                                     skl::GYRO_FULL_SCALE_2000DPS);
+    if (n == 20) mpu.set_full_scales(skl::MPU925x::ACCEL_FULL_SCALE_4G,
+                                     skl::MPU925x::GYRO_FULL_SCALE_500DPS);
+    if (n == 40) mpu.set_full_scales(skl::MPU925x::ACCEL_FULL_SCALE_8G,
+                                     skl::MPU925x::GYRO_FULL_SCALE_2000DPS);
   }
 }
 
