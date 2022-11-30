@@ -55,7 +55,8 @@ add_library(sklmpu9255 STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu.cpp
                               ${CMAKE_CURRENT_SOURCE_DIR}/src/qfilter.cpp)
 target_include_directories(sklmpu9255
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
+set_target_properties(sklmpu9255
+    PROPERTIES PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/src/sklmpu9255.h")
 # Make sure the OBJECT libraries are built with position independent code (it is
 # not ON by default).
 set_target_properties(sklmpu9255 PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -125,27 +126,24 @@ endif()
 ################################################################################
 # install
 
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+
 # Install the different headers and libraries.
 install(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/sklmpu9255.h
-  DESTINATION include)
+  TARGETS sklmpu9255
+  EXPORT ${PROJECT_NAME}Targets
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(TARGETS sklmpu9255
-        EXPORT ${PROJECT_NAME}_targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-
-set(ConfigPackageLocation lib/${PROJECT_NAME}/cmake/)
-
-# Install the exports.
-install(
-  EXPORT ${PROJECT_NAME}_targets
-  NAMESPACE ${PROJECT_NAME}::
-  FILE ${PROJECT_NAME}Targets.cmake
-  DESTINATION ${ConfigPackageLocation})
+set(ConfigPackageLocation ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmake/)
+install(EXPORT ${PROJECT_NAME}Targets NAMESPACE ${PROJECT_NAME}::
+        DESTINATION ${ConfigPackageLocation})
 
 # Create the CMake version file.
-include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   VERSION ${PROJECT_VERSION}
@@ -153,15 +151,14 @@ write_basic_package_version_file(
 
 # Create the Config file.
 include(CMakePackageConfigHelpers)
-set(ConfigPackageLocation lib/${PROJECT_NAME}/cmake/)
 configure_package_config_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake INSTALL_DESTINATION
-  ${ConfigPackageLocation})
+  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+  INSTALL_DESTINATION ${ConfigPackageLocation})
 
 # Install the generated CMake files.
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/sklmpu9255ConfigVersion.cmake"
-              "${CMAKE_CURRENT_BINARY_DIR}/sklmpu9255Config.cmake"
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+              "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
         DESTINATION ${ConfigPackageLocation})
 
 ################################################################################
