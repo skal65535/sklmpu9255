@@ -22,6 +22,9 @@
 
 cmake_minimum_required(VERSION 3.5)
 
+# to avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP:
+set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+
 project(
   sklmpu9255
   LANGUAGES CXX
@@ -98,18 +101,27 @@ endif()
 # tests
 
 if(BUILD_TESTS)
-  include(FetchContent)
-  # release 1.12.1
-  FetchContent_Declare(googletest
-    URL https://github.com/google/googletest/archive/58d77fa8070e8cec2dc1ed015d66b454c8d78850.zip
-    DOWNLOAD_EXTRACT_TIMESTAMP true
-  )
-  # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
-
   enable_testing()
-  include(GoogleTest)
+
+  include(GoogleTest OPTIONAL)
+  if(EXISTS "${GTEST_SOURCE_DIR}/CMakeLists.txt")
+    message(STATUS "Using ${GTEST_SOURCE_DIR}/CMakeLists.txt.")
+    add_subdirectory(${GTEST_SOURCE_DIR} ${GTEST_BUILD_DIR} EXCLUDE_FROM_ALL)
+  else()
+    find_package(GTest QUIET)
+    if(GTEST_FOUND)
+      message(STATUS "Found installed CMake Google Test package.")
+    else()
+      include(FetchContent)
+      # release 1.12.1
+      FetchContent_Declare(googletest
+        URL https://github.com/google/googletest/archive/58d77fa8070e8cec2dc1ed015d66b454c8d78850.zip
+      )
+      # For Windows: Prevent overriding the parent project's compiler/linker settings
+      set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+      FetchContent_MakeAvailable(googletest)
+    endif()
+  endif()
 
   # test_mpu
   add_executable(test_mpu tests/test_mpu.cpp)
