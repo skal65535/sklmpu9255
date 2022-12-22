@@ -21,13 +21,12 @@
 // SOFTWARE.
 //
 ////////////////////////////////////////////////////////////////////////////////
-// Simple I2C Interface for MPU 9255 gyro and AK8963 magnetometer
+// I2C Interface for MPU 9255 gyro and AK8963 magnetometer
 //
 // Author: skal (pascal.massimino@gmail.com)
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "sklmpu9255.h"
-
 #include "internal.h"
 
 #include <sys/ioctl.h>
@@ -40,85 +39,9 @@
 #include <cstring>
 #include <algorithm>
 
-#if !defined(FAKE_I2C)
-#include <linux/i2c-dev.h>
-#else
-#define I2C_SLAVE 0
-#endif
-
-namespace skl {
-
 #define TEMPERATURE_OUT         0x41   // 0x41/0x42: OUT_H/L
 
-////////////////////////////////////////////////////////////////////////////////
-// I2C I/O
-
-static const char kDevName[] = "/dev/i2c-1";
-static int fd = -1;
-
-////////////////////////////////////////////////////////////////////////////////
-
-bool I2C_init(void) {
-  if (fd < 0) fd = open(kDevName, O_RDWR);
-  if (fd < 0) {
-    fprintf(stderr, "Failed to open the i2c bus [%s].\n", kDevName);
-    return false;
-  }
-  return true;
-}
-
-void I2C_close() {
-  if (fd >= 0) {
-    close(fd);
-    fd = -1;
-  }
-}
-
-uint8_t I2C_read_byte(uint8_t dev_address, uint8_t reg_address) {
-  assert(fd >= 0);
-  if (ioctl(fd, I2C_SLAVE, dev_address) < 0) {
-    fprintf(stderr, "bus: failed to get READ access [dev:0x%.2x].\n",
-            dev_address);
-    return 0;
-  }
-  uint8_t value = 0;
-  if (write(fd, &reg_address, 1) != 1 || read(fd, &value, 1) != 1) {
-    fprintf(stderr, "Failed to read bus value [reg: 0x%.2x].\n", reg_address);
-  }
-  return value;
-}
-
-bool I2C_read_bytes(uint8_t dev_address, uint8_t reg_address,
-                    uint8_t values[], uint32_t len) {
-  assert(fd >= 0);
-  if (ioctl(fd, I2C_SLAVE, dev_address) < 0) {
-    fprintf(stderr, "bus: failed to get READ access [dev:0x%.2x].\n",
-            dev_address);
-    return false;
-  }
-  if (write(fd, &reg_address, 1) != 1 || read(fd, values, len) != len) {
-    fprintf(stderr, "Failed to read %d values [reg: 0x%.2x].\n",
-            len, reg_address);
-    return false;
-  }
-  return true;
-}
-
-bool I2C_write_byte(uint8_t dev_address, uint8_t reg_address, uint8_t value) {
-  assert(fd >= 0);
-  if (ioctl(fd, I2C_SLAVE, dev_address) < 0) {
-    fprintf(stderr, "bus: failed to get WRITE access [dev:0x%.2x].\n",
-            dev_address);
-    return false;
-  }
-  const uint8_t buf[2] = { reg_address, value };
-  if (write(fd, buf, 2) != 2) {
-    fprintf(stderr, "Failed to write bus value %u [reg:0x%.2x].\n",
-            value, reg_address);
-    return false;
-  }
-  return true;
-}
+namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -154,7 +77,7 @@ void MPU::set_full_scales(MPU925x::accel_full_scale_t accel_scale,
 }
 
 void MPU::print() const {
-  fprintf(stderr, "I2C OK [fd: %d  dev='%s'].\n", fd, kDevName);
+  I2C_print();
   mpu925x_.print();
   ak8963_.print();
 }

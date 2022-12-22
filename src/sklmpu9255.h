@@ -38,10 +38,11 @@
 namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
-// I2C interface
+// I2C interface (possibly through HID + MCP2221)
 
 extern bool I2C_init();
 extern void I2C_close();
+extern void I2C_print(void);
 extern uint8_t I2C_read_byte(uint8_t dev_address, uint8_t reg_address);
 extern bool I2C_read_bytes(uint8_t dev_address, uint8_t reg_address,
                            uint8_t values[], uint32_t len);
