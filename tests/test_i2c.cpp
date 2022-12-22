@@ -33,6 +33,22 @@ using namespace skl;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+TEST(Map, TestI2C) {
+  EXPECT_TRUE(I2C_init());
+  EXPECT_TRUE(I2C_reset_device());
+  EXPECT_TRUE(I2C_init());
+  printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f");
+  for (uint32_t address = 0x00; address <= 0x77; ++address) {
+    if ((address & 0xf) == 0) printf("\n%02x:", address);
+    if (I2C_is_connected(address)) printf(" %02x", address);
+    else printf(" --");
+  }
+  printf("\n");
+  I2C_close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 TEST(WAI, TestI2C) {
   EXPECT_TRUE(I2C_init());
   I2C_print();
@@ -42,7 +58,7 @@ TEST(WAI, TestI2C) {
   EXPECT_TRUE(WAI_1 == 0x70 || WAI_1 == 0x71 || WAI_1 == 0x73);
 
   const uint32_t WAI_2 =
-      I2C_read_byte(0x77 /* MAG_ADDRESS */, 0x00 /* MAG_WHO_AM_I */);
+      I2C_read_byte(0x0c /* MAG_ADDRESS */, 0x00 /* MAG_WHO_AM_I */);
   printf("WAI_2 = 0x%.2x\n", WAI_2);
   EXPECT_EQ(WAI_2, 0x48);
 

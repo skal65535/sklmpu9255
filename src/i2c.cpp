@@ -123,10 +123,11 @@ struct I2CDevice {
   static bool store_device(const hid_device_info& info);
 
   bool open();   // must be called after store_device()
-  bool reset();
+  bool reset_device();  // WARNING!
   bool set_clock(uint8_t divider, uint8_t duty);
   bool set_divider(uint8_t divider);
   bool is_connected();
+  bool is_writable(uint8_t slave);
   bool write(uint32_t slave, uint32_t reg, uint8_t data);  // write 1 byte
   bool read(uint32_t slave, uint32_t reg, uint8_t* data, size_t len);
   bool cancel();  // cancel any pending transfer, if any. Always returns false.
@@ -145,12 +146,12 @@ struct Report {
   uint8_t* const data_ = &data_w_[1];
 
   Report(uint8_t type) {
-    reset();
+    clear();
     data_[0] = type;
     data_w_[0] = 0x00;  // constant, Report-ID
   }
   uint8_t operator[](int i) const { return data_[i]; }
-  void reset() { memset(data_, 0, kSize); }
+  void clear() { memset(data_, 0, kSize); }
   bool USBread(hid_device* const hid) {
     memset(data_, 0, kSize);   // TODO(skal): needed?
     return (hid != NULL) && 
@@ -164,7 +165,7 @@ struct Report {
   bool USBio(hid_device* const hid) { return USBwrite(hid) && USBread(hid); }
   // transaction w/o payload
   bool USBcmd(hid_device* const hid, uint8_t type, uint8_t cmd = 0) {
-    reset();
+    clear();
     data_[0] = type;
     data_[1] = cmd;
     return USBwrite(hid) && USBread(hid);
@@ -293,12 +294,15 @@ void I2CDevice::print_status(const char msg[]) {
   }
 }
 
-bool I2CDevice::reset() {
-  Report r(RESET);
+bool I2CDevice::reset_device() {
+  Report r(RESET);  // table 3-40
   r.data_[1] = 0xab;
   r.data_[2] = 0xcd;
   r.data_[3] = 0xef;
-  return r.USBio(hid_);
+  // no USB response expected!
+  if (!r.USBwrite(hid_)) return OnError("RESET", 0xffff, r);
+  usleep(1000 * 1000);  // 1s wake-up
+  return true;
 }
 
 bool I2CDevice::set_clock(uint8_t divider, uint8_t duty) {
@@ -318,6 +322,15 @@ bool I2CDevice::set_divider(uint8_t divider) {
 bool I2CDevice::is_connected() {
   Report r(STATUS_SET);
   return r.USBio(hid_) && (r[0] == STATUS_SET);
+}
+
+bool I2CDevice::is_writable(uint8_t slave) {
+  if (slave >= 128) return false;
+  Report r(I2C_WRITE);
+  r.data_[1] = 0;
+  r.data_[2] = 0;
+  r.data_[3] = slave * 2;
+  return (!r.USBio(hid_)) ? false : (get_state() != 0x00) ? cancel() : true;
 }
 
 bool I2CDevice::write(uint32_t slave, uint32_t reg, uint8_t data) {
@@ -391,7 +404,7 @@ bool I2CDevice::wait_state(uint8_t expected, int nb_try) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void I2C_print(void) {
+void I2C_print() {
   if (dev_ != nullptr) {
     fprintf(stderr, "I2C: OK [dev: %p].\n", dev_);
     dev_->print();
@@ -400,7 +413,7 @@ void I2C_print(void) {
   }
 }
 
-bool I2C_init(void) {
+bool I2C_init() {
   if (dev_ != nullptr) return true;
   if (!I2CDevice::init()) return false;
   hid_device_info* const all = hid_enumerate(kDefaultVID, kDefaultPID);
@@ -415,6 +428,16 @@ bool I2C_init(void) {
   if (!devices_[0].open()) return false;
   dev_ = &devices_[0];
   return true;
+}
+
+bool I2C_reset_device() {
+  if (dev_ == nullptr || !dev_->reset_device()) return false;
+  I2C_close();
+  return true;
+}
+
+bool I2C_is_connected(uint8_t address) {
+  return (dev_ != NULL) && dev_->is_connected() && dev_->is_writable(address);
 }
 
 void I2C_close() {
@@ -441,7 +464,7 @@ bool I2C_write_byte(uint8_t dev_address, uint8_t reg_address, uint8_t value) {
 static const char kDevName[] = "/dev/i2c-1";
 static int fd = -1;
 
-void I2C_print(void) {
+void I2C_print() {
   if (fd >= 0) {
     fprintf(stderr, "I2C OK [fd: %d  dev='%s'].\n", fd, kDevName);
   } else {
@@ -449,13 +472,21 @@ void I2C_print(void) {
   }
 }
 
-bool I2C_init(void) {
+bool I2C_init() {
   if (fd < 0) fd = open(kDevName, O_RDWR);
   if (fd < 0) {
     fprintf(stderr, "Failed to open the i2c bus [%s].\n", kDevName);
     return false;
   }
   return true;
+}
+
+bool I2C_reset_device() {
+  return true;  // not supported
+}
+
+bool I2C_is_connected(uint8_t address) {
+  return (fd >= 0) && (ioctl(fd, I2C_SLAVE, address) >= 0);
 }
 
 void I2C_close() {

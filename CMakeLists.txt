@@ -57,25 +57,27 @@ if(USE_HID)
   add_library(sklhid STATIC ${CMAKE_CURRENT_SOURCE_DIR}/hidapi/hid.c)
   target_include_directories(sklhid
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hidapi)
-  set_target_properties(sklhid
-      PROPERTIES PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/hidapi/pcp2221_hidapi.h")
   set_target_properties(sklhid PROPERTIES POSITION_INDEPENDENT_CODE ON)
   if(APPLE)
     target_link_libraries(sklhid PRIVATE "-framework CoreFoundation" "-framework IOKit")
   endif()
 endif()
 
-add_library(sklmpu9255 STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu.cpp
-                              ${CMAKE_CURRENT_SOURCE_DIR}/src/i2c.cpp
-                              ${CMAKE_CURRENT_SOURCE_DIR}/src/ak8963.cpp
-                              ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu925x.cpp
-                              ${CMAKE_CURRENT_SOURCE_DIR}/src/qfilter.cpp)
+set(SKLMPU9255_OBJS ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu.cpp
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/i2c.cpp
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/ak8963.cpp
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu925x.cpp
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/qfilter.cpp)
+if(USE_HID)
+  list(APPEND SKLMPU9255_OBJS $<TARGET_OBJECTS:sklhid>)
+endif()
+
+add_library(sklmpu9255 STATIC ${SKLMPU9255_OBJS})
+
 target_include_directories(sklmpu9255
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set_target_properties(sklmpu9255
     PROPERTIES PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/src/sklmpu9255.h")
-# Make sure the OBJECT libraries are built with position independent code (it is
-# not ON by default).
 set_target_properties(sklmpu9255 PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Set the version numbers.
@@ -88,6 +90,9 @@ target_include_directories(
 if(USE_HID)
   target_compile_definitions(sklmpu9255 PUBLIC USE_HID)
   target_include_directories(sklmpu9255 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hidapi)
+  if (APPLE)
+    target_link_libraries(sklmpu9255 PRIVATE "-framework CoreFoundation" "-framework IOKit")
+  endif()
 endif()
 
 if(FAKE_I2C)
@@ -100,9 +105,6 @@ endif()
 add_executable(show_rpy examples/show_rpy.cpp)
 target_include_directories(show_rpy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(show_rpy LINK_PRIVATE sklmpu9255)
-if(USE_HID)
-  target_link_libraries(show_rpy LINK_PRIVATE sklhid)
-endif()
 
 if(USE_SDL)
   find_package(SDL2)
@@ -161,11 +163,6 @@ if(BUILD_TESTS)
   add_test(NAME test_i2c
            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_i2c
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-  if(USE_HID)
-    target_link_libraries(test_mpu LINK_PRIVATE sklhid)
-    target_link_libraries(test_i2c LINK_PRIVATE sklhid)
-  endif()
 
   gtest_discover_tests(test_i2c test_mpu)
 endif()

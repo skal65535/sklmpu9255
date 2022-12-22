@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
       return 0;
     }
   }
-  if (W == 0) W = 600;
+  if (W == 0) W = 1280;
   if (H == 0) H = 1 + (W / 3);
 
   if (!mpu.init(calibrate, ahrs, avg_size)) {
