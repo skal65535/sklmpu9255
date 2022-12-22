@@ -21,57 +21,33 @@
 // SOFTWARE.
 //
 ////////////////////////////////////////////////////////////////////////////////
-// some common internal functions
+// simple tests of the I2C interface
 //
 // Author: skal (pascal.massimino@gmail.com)
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(SKL_MPU9255_INTERNAL_H_)
-#define SKL_MPU9255_INTERNAL_H_
+#include "sklmpu9255.h"
+#include "gtest/gtest.h"
 
-#include <stdint.h>
-#include <stdio.h>
-
-#define MPU_ADDRESS             0x68    // I2C: default device adress
-
-#define DEBUG_INTERNAL
-
-namespace skl {
-
-static inline int16_t get_16s(const uint8_t buf[2]) {
-  return (int16_t)(((uint16_t)buf[0] << 8) | (uint16_t)buf[1]);
-}
-static inline int16_t get_16s_le(const uint8_t buf[2]) {
-  return (int16_t)(((uint16_t)buf[1] << 8) | (uint16_t)buf[0]);
-}
-
-static inline void get_3f(const uint8_t buf[6], float scale, float values[3]) {
-  values[0] = scale * get_16s(buf + 0);
-  values[1] = scale * get_16s(buf + 2);
-  values[2] = scale * get_16s(buf + 4);
-}
-
-static inline bool get_3f(uint8_t reg, float scale, float values[3]) {
-  uint8_t tmp[6];
-  if (!I2C_read_bytes(MPU_ADDRESS, reg, tmp, 6)) return false;
-  get_3f(tmp, scale, values);
-  return true;
-}
-
-static inline void print3f(const char msg[], const float v[3]) {
-  fprintf(stderr, "%s%.3f %.3f %.3f\n", msg, v[0], v[1], v[2]);
-}
-
-#if defined(DEBUG_INTERNAL)
-#define LOG_MSG(fmt, ...) do {    \
-  fprintf(stderr, "[%s : %d] ", __FILE__, __LINE__); \
-  fprintf(stderr, fmt, ## __VA_ARGS__); } while (false)
-#else
-#define LOG_MSG(fmt, ...) ((void*)fmt)
-#endif
-
-}  // namespace skl
+using namespace skl;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif  // SKL_MPU9255_INTERNAL_H_
+TEST(WAI, TestI2C) {
+  EXPECT_TRUE(I2C_init());
+  I2C_print();
+  const uint32_t WAI_1 =
+      I2C_read_byte(0x68 /* MPU_ADDRESS */, 0x75 /* MPU_WHO_AM_I */);
+  printf("WAI_1 = 0x%.2x\n", WAI_1);
+  EXPECT_TRUE(WAI_1 == 0x70 || WAI_1 == 0x71 || WAI_1 == 0x73);
+
+  const uint32_t WAI_2 =
+      I2C_read_byte(0x77 /* MAG_ADDRESS */, 0x00 /* MAG_WHO_AM_I */);
+  printf("WAI_2 = 0x%.2x\n", WAI_2);
+  EXPECT_EQ(WAI_2, 0x48);
+
+  I2C_close();
+  I2C_print();
+}
+
+////////////////////////////////////////////////////////////////////////////////
