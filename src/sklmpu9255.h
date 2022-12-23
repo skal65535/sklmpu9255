@@ -69,6 +69,7 @@ typedef enum { GYRO_FULL_SCALE_125DPS = 0,  // for LSM6DSOX only
 class MPU925x {
  public:
   static uint8_t id();
+  static uint8_t address();
   static uint8_t WAI() { return 0x71; }
 
   bool init();
@@ -100,7 +101,8 @@ class MPU925x {
 class LSM6DSOX {
  public:
   static uint8_t id();
-  static uint8_t WAI() { return 0xd8; }
+  static uint8_t address();
+  static uint8_t WAI() { return 0x6c; }
 
   bool init();
   void close();
@@ -130,6 +132,7 @@ class LSM6DSOX {
 class AK8963 {
  public:
   static uint8_t id();
+  static uint8_t address();
   static uint8_t WAI() { return 0x48; }
 
   bool init();
@@ -192,11 +195,12 @@ class AveragingBuffer {
 
 class MPU {
  public:
-  ~MPU();
+  ~MPU() { close(); }
 
   bool init(float calibration_secs = 0.f,
             bool ahrs = false,
             int averaging_size = 0 /*off*/);
+  void close();
 
   bool accel(float values[3]);  // in m/s^2
   bool gyro(float values[3]);   // in deg/s
@@ -214,14 +218,12 @@ class MPU {
   bool imu_ok_ = false;
   bool mag_ok_ = false;
 
-  //MPU925x mpu925x_;
+  // MPU925x mpu925x_;
   LSM6DSOX mpu925x_;
   AK8963  ak8963_;
   QFilter q_filter_;
   bool ahrs_ = false;
   AveragingBuffer avg_gyro_, avg_accel_, avg_mag_;
-
-  bool self_test();  // sets imu_ok_ / mag_ok_
 };
 
 ////////////////////////////////////////////////////////////////////////////////

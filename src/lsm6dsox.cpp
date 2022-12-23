@@ -58,14 +58,20 @@ namespace skl {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CheckStatusBit(uint8_t bit) {
-  return true;
-//  return ((I2C_read_byte(LSM_ADDRESS, STATUS_REG) & bit) != 0);
+  return ((I2C_read_byte(LSM_ADDRESS, STATUS_REG) & bit) != 0);
 }
 
-
+uint8_t LSM6DSOX::address() { return LSM_ADDRESS; }
 uint8_t LSM6DSOX::id() { return I2C_read_byte(LSM_ADDRESS, LSM_WHO_AM_I); }
 
 bool LSM6DSOX::init() {
+  if (!I2C_is_connected(address())) return false;
+  const uint8_t my_id = id();
+  if (my_id != WAI()) return false;
+  LOG_MSG("WHO AM I: imu = 0x%.2x [%s]\n", my_id,
+          my_id == 0x6c ? "LSM6DSOX" :
+          my_id == 0x69 ? "LSM6DSOX" : "MPU????");
+
   // accel : 104Hz, 4G, bypass, ODR/4 low-pass filtering
   I2C_write_byte(LSM_ADDRESS, CTRL1_XL, 0x4a);
   // gyro : 104Hz, 2000dps, bypass
@@ -74,6 +80,9 @@ bool LSM6DSOX::init() {
   I2C_write_byte(LSM_ADDRESS, CTRL7_G, 0x00);
   // ODR config: ODR/4
   I2C_write_byte(LSM_ADDRESS, CTRL8_XL, 0x09);
+
+  set_gyro_scale(GYRO_FULL_SCALE_250DPS);
+  set_accel_scale(ACCEL_FULL_SCALE_8G);
 
   return true;
 }
@@ -87,7 +96,7 @@ float LSM6DSOX::temperature() const {
   uint8_t tmp[2];
   if (!CheckStatusBit(4)) return 0.;
   if (!I2C_read_bytes(LSM_ADDRESS, TEMPERATURE_OUT, tmp, 2)) return 0.;
-  return get_16s(tmp) / 256.0f + 25.0f;
+  return get_16s_le(tmp) / 256.0f + 25.0f;
 }
 
 void LSM6DSOX::set_gyro_scale(gyro_full_scale_t scale) {
@@ -99,6 +108,7 @@ void LSM6DSOX::set_gyro_scale(gyro_full_scale_t scale) {
     case GYRO_FULL_SCALE_250DPS:  v |= 0 << 1; dps =  250.f; break;
     case GYRO_FULL_SCALE_500DPS:  v |= 2 << 1; dps =  500.f; break;
     case GYRO_FULL_SCALE_1000DPS: v |= 4 << 1; dps = 1000.f; break;
+    default:
     case GYRO_FULL_SCALE_2000DPS: v |= 6 << 1; dps = 2000.f; break;
   }
   I2C_write_byte(LSM_ADDRESS, CTRL2_G, v);
@@ -113,6 +123,7 @@ void LSM6DSOX::set_accel_scale(accel_full_scale_t scale) {
     case ACCEL_FULL_SCALE_2G:  v |= 0 << 2; g =  2.f; break;  // 2g
     case ACCEL_FULL_SCALE_4G:  v |= 2 << 2; g =  4.f; break;  // 4g
     case ACCEL_FULL_SCALE_8G:  v |= 3 << 2; g =  8.f; break;  // 8g
+    default:
     case ACCEL_FULL_SCALE_16G: v |= 1 << 2; g = 16.f; break;  // 16g
   }
   I2C_write_byte(LSM_ADDRESS, CTRL1_XL, v);
@@ -121,14 +132,14 @@ void LSM6DSOX::set_accel_scale(accel_full_scale_t scale) {
 
 bool LSM6DSOX::accel(float values[3]) {
   if (!CheckStatusBit(1)) return 0.;
-  if (!get_3f(LSM_ADDRESS, ACCEL_OUT, accel_scale_, values)) return false;
+  if (!get_3f_le(LSM_ADDRESS, ACCEL_OUT, accel_scale_, values)) return false;
   for (int i : {0, 1, 2}) values[i] -= accel_scale_ * accel_bias_[i];
   return true;
 }
 
 bool LSM6DSOX::gyro(float values[3]) {
   if (!CheckStatusBit(2)) return 0.;
-  if (!get_3f(LSM_ADDRESS, GYRO_OUT, gyro_scale_, values)) return false;
+  if (!get_3f_le(LSM_ADDRESS, GYRO_OUT, gyro_scale_, values)) return false;
   for (int i : {0, 1, 2}) values[i] -= gyro_bias_[i];
   return true;
 }
@@ -181,18 +192,18 @@ bool LSM6DSOX::calibrate(float accel_bias[3], float gyro_bias[3]) {
     for (int n = 0; n < nb_samples; ++n) {
       I2C_read_bytes(LSM_ADDRESS, FIFO_R_W, tmp, 12);
       float ab[3], gb[3];
-      get_3f(tmp + 0, norm_a, ab);
-      get_3f(tmp + 6, norm_g, gb);
+      get_3f_le(tmp + 0, norm_a, ab);
+      get_3f_le(tmp + 6, norm_g, gb);
       for (int i : {0, 1, 2}) accel_bias[i] += ab[i];
       for (int i : {0, 1, 2}) gyro_bias[i] += gb[i];
     }
     accel_bias[2] -= (accel_bias[2] > 0.) ? 1.f : -1.f;   // subtract 1G
   }
   usleep(100 * 1000);
-#endif
 
   init();    // and reset all!
   usleep(500 * 1000);
+#endif
   return true;
 }
 

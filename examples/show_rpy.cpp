@@ -156,7 +156,7 @@ class Window {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* const kWhat[4] = { "gyro", "rpy", "accel", "mag" };
+static const char* const kWhat[4] = { "gyro", "rpy", "mag", "accel" };
 static const char* const kOff[2] = { "off", "on" };
 
 static void print_help() {
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
   }
 #endif
 
-  printf("SHOWING %s\n", kWhat[what]);
+  fprintf(stderr, "SHOWING %s\n", kWhat[what]);
   mpu.print();
   while (cnt > 0) {
     if (show) {
@@ -338,6 +338,7 @@ int main(int argc, char **argv) {
   pthread_join(t_id, NULL);
   fprintf(stderr, "Thread STOPPING\n");
 #endif
+  mpu.close();
   delete window;
   return 0;
 }

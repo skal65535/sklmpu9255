@@ -68,9 +68,18 @@ namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+uint8_t MPU925x::address() { return MPU_ADDRESS; }
 uint8_t MPU925x::id() { return I2C_read_byte(MPU_ADDRESS, MPU_WHO_AM_I); }
 
 bool MPU925x::init() {
+  if (!I2C_is_connected(address())) return false;
+  const uint8_t my_id = id();
+  if (my_id != WAI()) return false;
+  LOG_MSG("WHO AM I: imu = 0x%.2x [%s]\n", my_id,
+          my_id == 0x71 ? "MPU9250" :
+          my_id == 0x73 ? "MPU9255" :
+          my_id == 0x70 ? "MPU6500" : "MPU????");
+
   I2C_write_byte(MPU_ADDRESS, PWR_MGMT_1, 0x80);  // reset device (bit 7)
   usleep(100 * 1000);
   I2C_write_byte(MPU_ADDRESS, PWR_MGMT_1, 0x00);  // enable all sensors

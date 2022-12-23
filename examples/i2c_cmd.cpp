@@ -66,7 +66,7 @@ static uint8_t ParseByte(const char str[]) {
   return (uint8_t)v;
 }
 
-static const char* kBool[2] = {"false", "true"};
+static const char* kBool[2] = {"Error", "ok"};
 
 ////////////////////////////////////////////////////////////////////////////////
 

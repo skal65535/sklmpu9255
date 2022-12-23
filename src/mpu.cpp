@@ -44,33 +44,41 @@ namespace skl {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MPU::init(float calibration_secs, bool ahrs, int averaging_size) {
-  if (!I2C_init()) return false;
-
-  // self tests
-  if (!self_test()) return false;
-
-  imu_ok_ = imu_ok_ && mpu925x_.init();
-  mag_ok_ = mag_ok_ && ak8963_.init();
-
-  if (calibration_secs > 0.f) {
-    if (!mpu925x_.calibrate() ||
-        !ak8963_.calibrate(calibration_secs)) {
-      return false;
-    }
-  }
-
   ahrs_ = ahrs;
   avg_mag_.init(averaging_size, 0.f);
   avg_accel_.init(averaging_size, 0.f);
   avg_gyro_.init(averaging_size, 0.f);
   q_filter_.reset();
 
+  if (!I2C_init()) return false;
+
+  imu_ok_ = mpu925x_.init();
+  mag_ok_ = ak8963_.init();
+  LOG_MSG("IMU OK: %d     MAG OK: %d\n", imu_ok_, mag_ok_);
+
+  if (calibration_secs > 0.f) {
+    if (imu_ok_) {
+      imu_ok_ = mpu925x_.calibrate();
+      if (!imu_ok_) return false;
+    }
+    if (mag_ok_) {
+      mag_ok_ = ak8963_.calibrate(calibration_secs);
+      if (!mag_ok_) return false;
+    }
+  }
+
   return true;
 }
 
-MPU::~MPU() {
-  if (imu_ok_) mpu925x_.close();
-  if (mag_ok_) ak8963_.close();
+void MPU::close() {
+  if (imu_ok_) {
+    mpu925x_.close();
+    imu_ok_ = false;
+  }
+  if (mag_ok_) {
+    ak8963_.close();
+    mag_ok_ = false;
+  }
   I2C_close();
 }
 
@@ -88,21 +96,6 @@ void MPU::print() const {
   if (mag_ok_) ak8963_.print();
 }
 
-bool MPU::self_test() {
-  const uint8_t mpu_id = mpu925x_.id();
-  const uint8_t mag_id = ak8963_.id();
-  imu_ok_ = (mpu_id == mpu925x_.WAI());
-  mag_ok_ = (mag_id == ak8963_.WAI());
-  LOG_MSG("IMU OK: %d     MAG OK: %d\n", imu_ok_, mag_ok_);
-  LOG_MSG("WHO AM I: mpu 0x%.2x [%s], mag = 0x%.2x [%s]\n",
-          mpu_id, mpu_id == 0x71 ? "MPU9250" : mpu_id == 0x73 ? "MPU9255" :
-                  mpu_id == 0x70 ? "MPU6500" :
-                  mpu_id == 0xd8 ? "LSM6DSOX" :
-                  "MPU????",
-          mag_id, mag_id == 0x48 ? "AK8963" : "??????");
-  return true;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MPU::accel(float values[3]) {
@@ -114,9 +107,8 @@ bool MPU::gyro(float values[3]) {
 bool MPU::mag(float values[3]) {
   return mag_ok_ && ak8963_.mag(values) && avg_mag_.store(values);
 }
-
 float MPU::temperature() {
-  return imu_ok_ ? mpu925x_.temperature() : 0.f;
+  return imu_ok_ ? mpu925x_.temperature() : -273.f;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -54,9 +54,16 @@ namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+uint8_t AK8963::address() { return MAG_ADDRESS; }
 uint8_t AK8963::id() { return I2C_read_byte(MAG_ADDRESS, MAG_WHO_AM_I); }
 
 bool AK8963::init() {
+  if (!I2C_is_connected(address())) return false;
+  const uint8_t my_id = id();
+  if (my_id != WAI()) return false;
+  LOG_MSG("WHO AM I: mag = 0x%.2x [%s]\n", my_id,
+          my_id == 0x48 ? "AK8963" : "??????");
+
   I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
   usleep(10 * 1000);
   I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x0f);  // enter fuse ROM access mode

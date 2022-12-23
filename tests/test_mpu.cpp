@@ -31,15 +31,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST(Basic, TestI2C) {
-  EXPECT_TRUE(skl::I2C_init());
-  skl::I2C_close();
-}
-
 TEST(Basic, TestMPU) {
   const int cnt = 3;
   skl::MPU mpu;
-  ASSERT_TRUE(mpu.init(false, true, 16)) << "Init failed.";
+  ASSERT_TRUE(mpu.init(0.f, true, 16)) << "Init failed.";
 
   for (uint32_t n = 0; n < cnt; ++n) {
     int16_t v[3];

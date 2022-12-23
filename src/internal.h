@@ -57,9 +57,27 @@ static inline bool get_3f(uint32_t device, uint8_t reg, float scale,
   return true;
 }
 
+static inline void get_3f_le(const uint8_t buf[6], float scale, float values[3]) {
+  values[0] = scale * get_16s_le(buf + 0);
+  values[1] = scale * get_16s_le(buf + 2);
+  values[2] = scale * get_16s_le(buf + 4);
+}
+
+static inline bool get_3f_le(uint32_t device, uint8_t reg, float scale,
+                             float values[3]) {
+  uint8_t tmp[6];
+  if (!I2C_read_bytes(device, reg, tmp, 6)) return false;
+  get_3f_le(tmp, scale, values);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static inline void print3f(const char msg[], const float v[3]) {
   fprintf(stderr, "%s%.3f %.3f %.3f\n", msg, v[0], v[1], v[2]);
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 #if defined(DEBUG_INTERNAL)
 #define LOG_MSG(fmt, ...) do {    \
