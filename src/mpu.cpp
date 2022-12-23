@@ -39,8 +39,6 @@
 #include <cstring>
 #include <algorithm>
 
-#define TEMPERATURE_OUT         0x41   // 0x41/0x42: OUT_H/L
-
 namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,8 +49,8 @@ bool MPU::init(float calibration_secs, bool ahrs, int averaging_size) {
   // self tests
   if (!self_test()) return false;
 
-  if (!mpu925x_.init()) return false;
-  if (!ak8963_.init()) return false;
+  imu_ok_ = imu_ok_ && mpu925x_.init();
+  mag_ok_ = mag_ok_ && ak8963_.init();
 
   if (calibration_secs > 0.f) {
     if (!mpu925x_.calibrate() ||
@@ -70,24 +68,37 @@ bool MPU::init(float calibration_secs, bool ahrs, int averaging_size) {
   return true;
 }
 
-void MPU::set_full_scales(MPU925x::accel_full_scale_t accel_scale,
-                          MPU925x::gyro_full_scale_t gyro_scale) {
-  mpu925x_.set_accel_scale(accel_scale);
-  mpu925x_.set_gyro_scale(gyro_scale);
+MPU::~MPU() {
+  if (imu_ok_) mpu925x_.close();
+  if (mag_ok_) ak8963_.close();
+  I2C_close();
+}
+
+void MPU::set_full_scales(accel_full_scale_t accel_scale,
+                          gyro_full_scale_t gyro_scale) {
+  if (imu_ok_) {
+    mpu925x_.set_accel_scale(accel_scale);
+    mpu925x_.set_gyro_scale(gyro_scale);
+  }
 }
 
 void MPU::print() const {
   I2C_print();
-  mpu925x_.print();
-  ak8963_.print();
+  if (imu_ok_) mpu925x_.print();
+  if (mag_ok_) ak8963_.print();
 }
 
-bool MPU::self_test() const {
+bool MPU::self_test() {
   const uint8_t mpu_id = mpu925x_.id();
   const uint8_t mag_id = ak8963_.id();
-  fprintf(stderr, "WHO AM I: mpu 0x%.2x [%s], mag = 0x%.2x [%s]\n",
+  imu_ok_ = (mpu_id == mpu925x_.WAI());
+  mag_ok_ = (mag_id == ak8963_.WAI());
+  LOG_MSG("IMU OK: %d     MAG OK: %d\n", imu_ok_, mag_ok_);
+  LOG_MSG("WHO AM I: mpu 0x%.2x [%s], mag = 0x%.2x [%s]\n",
           mpu_id, mpu_id == 0x71 ? "MPU9250" : mpu_id == 0x73 ? "MPU9255" :
-                  mpu_id == 0x70 ? "MPU6500" : "MPU????",
+                  mpu_id == 0x70 ? "MPU6500" :
+                  mpu_id == 0xd8 ? "LSM6DSOX" :
+                  "MPU????",
           mag_id, mag_id == 0x48 ? "AK8963" : "??????");
   return true;
 }
@@ -95,19 +106,17 @@ bool MPU::self_test() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MPU::accel(float values[3]) {
-  return (mpu925x_.accel(values) && avg_accel_.store(values));
+  return imu_ok_ && mpu925x_.accel(values) && avg_accel_.store(values);
 }
 bool MPU::gyro(float values[3]) {
-  return (mpu925x_.gyro(values) && avg_gyro_.store(values));
+  return imu_ok_ && mpu925x_.gyro(values) && avg_gyro_.store(values);
 }
 bool MPU::mag(float values[3]) {
-  return (ak8963_.mag(values) && avg_mag_.store(values));
+  return mag_ok_ && ak8963_.mag(values) && avg_mag_.store(values);
 }
 
 float MPU::temperature() {
-  uint8_t tmp[2];
-  if (!I2C_read_bytes(MPU_ADDRESS, TEMPERATURE_OUT, tmp, 2)) return 0.;
-  return get_16s(tmp) / 333.87 + 21.0;
+  return imu_ok_ ? mpu925x_.temperature() : 0.f;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

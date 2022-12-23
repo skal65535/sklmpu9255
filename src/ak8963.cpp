@@ -78,6 +78,10 @@ bool AK8963::init() {
   return true;
 }
 
+void AK8963::close() {
+  I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+}
+
 bool AK8963::mag(float values[3]) {
   const uint8_t st1 = I2C_read_byte(MAG_ADDRESS, MAG_ST1);
   if (!(st1 & 1)) return false;  // DRDY: data not ready

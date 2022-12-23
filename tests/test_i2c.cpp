@@ -62,6 +62,11 @@ TEST(WAI, TestI2C) {
   printf("WAI_2 = 0x%.2x\n", WAI_2);
   EXPECT_EQ(WAI_2, 0x48);
 
+  const uint32_t WAI_3 =
+      I2C_read_byte(0x6a /* LSM_ADDRESS */, 0x0f /* MAG_WHO_AM_I */);
+  printf("WAI_3 = 0x%.2x\n", WAI_3);
+  EXPECT_EQ(WAI_3, 0x6c);
+
   I2C_close();
   I2C_print();
 }

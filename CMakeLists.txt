@@ -67,6 +67,7 @@ set(SKLMPU9255_OBJS ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/i2c.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/ak8963.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/mpu925x.cpp
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/lsm6dsox.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/qfilter.cpp)
 if(USE_HID)
   list(APPEND SKLMPU9255_OBJS $<TARGET_OBJECTS:sklhid>)
@@ -100,7 +101,7 @@ if(FAKE_I2C)
 endif()
 
 ################################################################################
-# 'show_rpy' examples (requires SDL2)
+# 'show_rpy' examples (requires SDL2)(and THREADS possibly)
 
 add_executable(show_rpy examples/show_rpy.cpp)
 target_include_directories(show_rpy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -119,6 +120,13 @@ if(USE_THREAD)
   target_link_libraries(show_rpy LINK_PUBLIC pthread)
   target_compile_definitions(show_rpy PUBLIC USE_THREAD)
 endif()
+
+################################################################################
+# 'i2c_cmd' tool
+
+add_executable(i2c_cmd examples/i2c_cmd.cpp)
+target_include_directories(i2c_cmd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(i2c_cmd LINK_PRIVATE sklmpu9255)
 
 ################################################################################
 # tests

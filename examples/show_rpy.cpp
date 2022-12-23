@@ -192,17 +192,17 @@ int main(int argc, char **argv) {
   bool show_mag = false;
   int a_scale = 0, g_scale = 0;
   float calibrate = 1.f;
-  static const skl::MPU925x::accel_full_scale_t kAScales[] = {
-    skl::MPU925x::ACCEL_FULL_SCALE_2G,
-    skl::MPU925x::ACCEL_FULL_SCALE_4G,
-    skl::MPU925x::ACCEL_FULL_SCALE_8G,
-    skl::MPU925x::ACCEL_FULL_SCALE_16G
+  static const skl::accel_full_scale_t kAScales[] = {
+    skl::ACCEL_FULL_SCALE_2G,
+    skl::ACCEL_FULL_SCALE_4G,
+    skl::ACCEL_FULL_SCALE_8G,
+    skl::ACCEL_FULL_SCALE_16G
   };
-  static const skl::MPU925x::gyro_full_scale_t kGScales[] = {
-    skl::MPU925x::GYRO_FULL_SCALE_250DPS,
-    skl::MPU925x::GYRO_FULL_SCALE_500DPS,
-    skl::MPU925x::GYRO_FULL_SCALE_1000DPS,
-    skl::MPU925x::GYRO_FULL_SCALE_2000DPS
+  static const skl::gyro_full_scale_t kGScales[] = {
+    skl::GYRO_FULL_SCALE_250DPS,
+    skl::GYRO_FULL_SCALE_500DPS,
+    skl::GYRO_FULL_SCALE_1000DPS,
+    skl::GYRO_FULL_SCALE_2000DPS
   };
   for (int c = 1; c < argc; ++c) {
     if (!strcmp(argv[c], "-noshow")) {

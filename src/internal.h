@@ -32,8 +32,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define MPU_ADDRESS             0x68    // I2C: default device adress
-
 #define DEBUG_INTERNAL
 
 namespace skl {
@@ -51,9 +49,10 @@ static inline void get_3f(const uint8_t buf[6], float scale, float values[3]) {
   values[2] = scale * get_16s(buf + 4);
 }
 
-static inline bool get_3f(uint8_t reg, float scale, float values[3]) {
+static inline bool get_3f(uint32_t device, uint8_t reg, float scale,
+                          float values[3]) {
   uint8_t tmp[6];
-  if (!I2C_read_bytes(MPU_ADDRESS, reg, tmp, 6)) return false;
+  if (!I2C_read_bytes(device, reg, tmp, 6)) return false;
   get_3f(tmp, scale, values);
   return true;
 }

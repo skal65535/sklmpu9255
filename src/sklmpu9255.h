@@ -54,25 +54,29 @@ extern bool I2C_write_byte(uint8_t dev_address, uint8_t reg_address,
 ////////////////////////////////////////////////////////////////////////////////
 // MPU 925x gyro / accel
 
+typedef enum { ACCEL_FULL_SCALE_2G = 1,
+               ACCEL_FULL_SCALE_4G = 2,
+               ACCEL_FULL_SCALE_8G = 3,
+               ACCEL_FULL_SCALE_16G = 4
+} accel_full_scale_t;
+typedef enum { GYRO_FULL_SCALE_125DPS = 0,  // for LSM6DSOX only
+               GYRO_FULL_SCALE_250DPS = 1,
+               GYRO_FULL_SCALE_500DPS = 2,
+               GYRO_FULL_SCALE_1000DPS = 3,
+               GYRO_FULL_SCALE_2000DPS = 4
+} gyro_full_scale_t;
+
 class MPU925x {
  public:
   static uint8_t id();
+  static uint8_t WAI() { return 0x71; }
+
   bool init();
+  void close();
   bool accel(float values[3]);  // in m/s^2
   bool gyro(float values[3]);   // in deg/s
 
   void print() const;
-
-  typedef enum { ACCEL_FULL_SCALE_2G = 1,
-                 ACCEL_FULL_SCALE_4G = 2,
-                 ACCEL_FULL_SCALE_8G = 3,
-                 ACCEL_FULL_SCALE_16G = 4
-  } accel_full_scale_t;
-  typedef enum { GYRO_FULL_SCALE_250DPS = 1,
-                 GYRO_FULL_SCALE_500DPS = 2,
-                 GYRO_FULL_SCALE_1000DPS = 3,
-                 GYRO_FULL_SCALE_2000DPS = 4
-  } gyro_full_scale_t;
 
   void set_gyro_scale(gyro_full_scale_t scale);
   void set_accel_scale(accel_full_scale_t scale);
@@ -80,6 +84,7 @@ class MPU925x {
   bool calibrate() { return calibrate(accel_bias_, gyro_bias_); }
   void reset_bias();
   void set_bias(const float accel_bias[3], const float gyro_bias[3]);
+  float temperature() const;
 
  private:
   float gyro_scale_;
@@ -90,13 +95,45 @@ class MPU925x {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+// LSM 6DSOX gyro / accel
+
+class LSM6DSOX {
+ public:
+  static uint8_t id();
+  static uint8_t WAI() { return 0xd8; }
+
+  bool init();
+  void close();
+  bool accel(float values[3]);  // in m/s^2
+  bool gyro(float values[3]);   // in deg/s
+
+  void print() const;
+
+  void set_gyro_scale(gyro_full_scale_t scale);
+  void set_accel_scale(accel_full_scale_t scale);
+  bool calibrate(float accel_bias[3], float gyro_bias[3]);
+  bool calibrate() { return calibrate(accel_bias_, gyro_bias_); }
+  void reset_bias();
+  void set_bias(const float accel_bias[3], const float gyro_bias[3]);
+  float temperature() const;
+
+ private:
+  float gyro_scale_;
+  float gyro_bias_[3] = { 0.f, 0.f, 0.f };
+
+  float accel_scale_;
+  float accel_bias_[3] = { 0.f, 0.f, 0.f };
+};
+////////////////////////////////////////////////////////////////////////////////
 // AK8963 magnetometer
 
 class AK8963 {
  public:
   static uint8_t id();
+  static uint8_t WAI() { return 0x48; }
 
   bool init();
+  void close();
   bool mag(float values[3]);    // in milliGauss
 
   bool calibrate(float bias[3], float scale[3], float nb_secs = 15.f);
@@ -155,7 +192,7 @@ class AveragingBuffer {
 
 class MPU {
  public:
-  ~MPU() { I2C_close(); }
+  ~MPU();
 
   bool init(float calibration_secs = 0.f,
             bool ahrs = false,
@@ -168,19 +205,23 @@ class MPU {
 
   bool get_rpy(float rpy[3]);
 
-  void set_full_scales(MPU925x::accel_full_scale_t accel_scale,
-                       MPU925x::gyro_full_scale_t gyro_scale);
+  void set_full_scales(accel_full_scale_t accel_scale,
+                       gyro_full_scale_t gyro_scale);
 
   void print() const;
 
  private:
-  MPU925x mpu925x_;
+  bool imu_ok_ = false;
+  bool mag_ok_ = false;
+
+  //MPU925x mpu925x_;
+  LSM6DSOX mpu925x_;
   AK8963  ak8963_;
   QFilter q_filter_;
   bool ahrs_ = false;
   AveragingBuffer avg_gyro_, avg_accel_, avg_mag_;
 
-  bool self_test() const;
+  bool self_test();  // sets imu_ok_ / mag_ok_
 };
 
 ////////////////////////////////////////////////////////////////////////////////

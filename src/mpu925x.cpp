@@ -37,11 +37,10 @@
 namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
-// definitions of sensors adresses
+// definitions of sensors addresses
 
+#define MPU_ADDRESS             0x68    // I2C: default MPUxxx device address
 #define MPU_WHO_AM_I            0x75    // self-identify: 0x71, 0x73, 0x70
-#define GYRO_ADDRESS            0xd0    // gyro address
-#define ACCEL_ADDRESS           0xd0    // accel address
 // control registers
 #define USER_CTRL               0x6a    // DMP: bit 7: enable, bit 3: reset
 #define PWR_MGMT_1              0x6b
@@ -59,6 +58,8 @@ namespace skl {
 #define I2C_MST_CTRL            0x24
 #define INT_PIN_CFG             0x37
 #define INT_ENABLE              0x38
+#define TEMPERATURE_OUT         0x41   // 0x41/0x42: OUT_H/L
+
 // accel
 #define ACCEL_OUT               0x3b   // 0x3b -> 0x40 : XOUT_H/L YOUT_H/L ZOUT_H/L
 
@@ -102,11 +103,21 @@ bool MPU925x::init() {
   return true;
 }
 
+void MPU925x::close() {
+}
+
+float MPU925x::temperature() const {
+  uint8_t tmp[2];
+  if (!I2C_read_bytes(MPU_ADDRESS, TEMPERATURE_OUT, tmp, 2)) return 0.;
+  return get_16s(tmp) / 333.87 + 21.0;
+}
+
 void MPU925x::set_gyro_scale(gyro_full_scale_t scale) {
   float dps;   // degree per seconds
   uint8_t v = I2C_read_byte(MPU_ADDRESS, GYRO_CONFIG);
   v &= ~(3 << 3);  // clear bit 3 and 4
   switch (scale) {
+    case GYRO_FULL_SCALE_125DPS:
     case GYRO_FULL_SCALE_250DPS:  v |= 0 << 3; dps =  250.f; break;
     case GYRO_FULL_SCALE_500DPS:  v |= 1 << 3; dps =  500.f; break;
     case GYRO_FULL_SCALE_1000DPS: v |= 2 << 3; dps = 1000.f; break;
@@ -131,13 +142,13 @@ void MPU925x::set_accel_scale(accel_full_scale_t scale) {
 }
 
 bool MPU925x::accel(float values[3]) {
-  if (!get_3f(ACCEL_OUT, accel_scale_, values)) return false;
+  if (!get_3f(MPU_ADDRESS, ACCEL_OUT, accel_scale_, values)) return false;
   for (int i : {0, 1, 2}) values[i] -= accel_scale_ * accel_bias_[i];
   return true;
 }
 
 bool MPU925x::gyro(float values[3]) {
-  if (!get_3f(GYRO_OUT, gyro_scale_, values)) return false;
+  if (!get_3f(MPU_ADDRESS, GYRO_OUT, gyro_scale_, values)) return false;
   for (int i : {0, 1, 2}) values[i] -= gyro_bias_[i];
   return true;
 }

@@ -92,8 +92,6 @@ constexpr uint16_t kDefaultPID = 0x00dd;
 constexpr wchar_t kDefaultManufacturer[] = L"Microchip Technology Inc.";
 constexpr wchar_t kDefaultProduct[] = L"MCP2221 USB-I2C/UART Combo";
 
-
-
 // I2C device communicating to the USB Host with HID packets ('Report')
 struct I2CDevice {
  protected:
