@@ -54,47 +54,48 @@ namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-uint8_t AK8963::address() { return MAG_ADDRESS; }
-uint8_t AK8963::id() { return I2C_read_byte(MAG_ADDRESS, MAG_WHO_AM_I); }
-
 bool AK8963::init() {
-  if (!I2C_is_connected(address())) return false;
-  const uint8_t my_id = id();
-  if (my_id != WAI()) return false;
-  LOG_MSG("WHO AM I: mag = 0x%.2x [%s]\n", my_id,
-          my_id == 0x48 ? "AK8963" : "??????");
+  CHECK_OK(I2C_is_connected(MAG_ADDRESS));
+  uint8_t id;
+  CHECK_READ(MAG_ADDRESS, MAG_WHO_AM_I, &id, 1);
+  CHECK_OK(id == WAI());
+  LOG_MSG("WHO AM I: mag = 0x%.2x [%s]\n", id,
+          id == 0x48 ? "AK8963" : "??????");
 
-  I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
   usleep(10 * 1000);
-  I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x0f);  // enter fuse ROM access mode
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x0f);  // enter fuse ROM access mode
   usleep(10 * 1000);
   uint8_t values[3];
-  I2C_read_bytes(MAG_ADDRESS, MAG_ASA, values, 3);
+  CHECK_READ(MAG_ADDRESS, MAG_ASA, values, 3);
   mag_asa_f_[0] = 1.f + (values[0] - 128.) / 256.;
   mag_asa_f_[1] = 1.f + (values[1] - 128.) / 256.;
   mag_asa_f_[2] = 1.f + (values[2] - 128.) / 256.;
-  I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
   usleep(10 * 1000);
   // bit 0-3: MAG_MODE -> 0x02=8Hz, 0x06=100Hz continuous read
   // bit4: 0 = M14BITS, 1 = M16BITS
   const bool use_14b = false;
-  I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, (use_14b ? 0x00 : 0x10) | MAG_MODE);
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, (use_14b ? 0x00 : 0x10) | MAG_MODE);
   usleep(10 * 1000);
   // 1 milliGauss = 10 micro-Tesla.
   mag_scale_ = 10. * 4912. / (use_14b ? 8190. : 32760.);
   return true;
 }
 
-void AK8963::close() {
-  I2C_write_byte(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+bool AK8963::close() {
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+  return true;
 }
 
 bool AK8963::mag(float values[3]) {
-  const uint8_t st1 = I2C_read_byte(MAG_ADDRESS, MAG_ST1);
-  if (!(st1 & 1)) return false;  // DRDY: data not ready
   uint8_t tmp[7];
+  CHECK_READ(MAG_ADDRESS, MAG_ST1, tmp, 1);
+  const uint8_t st1 = tmp[0];
+  if (!(st1 & 1)) return false;  // DRDY: data not ready
+
   // this also read ST2 as tmp[7] at the end:
-  if (!I2C_read_bytes(MAG_ADDRESS, MAG_OUT, tmp, 7)) return false;
+  CHECK_READ(MAG_ADDRESS, MAG_OUT, tmp, 7);
   if (MAG_MODE == 0x02 || MAG_MODE == 0x04 || MAG_MODE == 0x06) {
     // if (st1 & 2) return false;   // DOR: Data overrun
   }

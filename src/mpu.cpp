@@ -70,7 +70,7 @@ bool MPU::init(float calibration_secs, bool ahrs, int averaging_size) {
   return true;
 }
 
-void MPU::close() {
+bool MPU::close() {
   if (imu_ok_) {
     mpu925x_.close();
     imu_ok_ = false;
@@ -79,15 +79,16 @@ void MPU::close() {
     ak8963_.close();
     mag_ok_ = false;
   }
-  I2C_close();
+  return I2C_close();
 }
 
-void MPU::set_full_scales(accel_full_scale_t accel_scale,
+bool MPU::set_full_scales(accel_full_scale_t accel_scale,
                           gyro_full_scale_t gyro_scale) {
   if (imu_ok_) {
-    mpu925x_.set_accel_scale(accel_scale);
-    mpu925x_.set_gyro_scale(gyro_scale);
+    CHECK_OK(mpu925x_.set_accel_scale(accel_scale));
+    CHECK_OK(mpu925x_.set_gyro_scale(gyro_scale));
   }
+  return true;
 }
 
 void MPU::print() const {

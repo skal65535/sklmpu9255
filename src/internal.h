@@ -31,8 +31,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
-#define DEBUG_INTERNAL
+#define DEBUG_INTERNAL   // TODO(skal): remove!
 
 namespace skl {
 
@@ -57,7 +58,8 @@ static inline bool get_3f(uint32_t device, uint8_t reg, float scale,
   return true;
 }
 
-static inline void get_3f_le(const uint8_t buf[6], float scale, float values[3]) {
+static inline void get_3f_le(const uint8_t buf[6], float scale,
+                             float values[3]) {
   values[0] = scale * get_16s_le(buf + 0);
   values[1] = scale * get_16s_le(buf + 2);
   values[2] = scale * get_16s_le(buf + 4);
@@ -79,13 +81,22 @@ static inline void print3f(const char msg[], const float v[3]) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static inline const char* strip_path(const char* const path) {
+  const char* p = strrchr(path, '/');
+  return p == NULL ? path : p + 1;
+}
 #if defined(DEBUG_INTERNAL)
-#define LOG_MSG(fmt, ...) do {    \
-  fprintf(stderr, "[%s : %d] ", __FILE__, __LINE__); \
+#define LOG_MSG(fmt, ...) do {                                      \
+  fprintf(stderr, "[%s : %d] ", strip_path(__FILE__), __LINE__);    \
   fprintf(stderr, fmt, ## __VA_ARGS__); } while (false)
+#define CHECK_OK(a) if (!(a)) { LOG_MSG("ERROR: %s\n", #a); return false; }
 #else
 #define LOG_MSG(fmt, ...) ((void*)fmt)
+#define CHECK_OK(a) if (!(a)) return false
 #endif
+
+#define CHECK_WRITE(D, R, V) CHECK_OK(I2C_write_byte(D, R, V))
+#define CHECK_READ(D, R, V, L) CHECK_OK(I2C_read_bytes(D, R, V, L))
 
 }  // namespace skl
 

@@ -438,11 +438,13 @@ bool I2C_is_connected(uint8_t address) {
   return (dev_ != NULL) && dev_->is_connected() && dev_->is_writable(address);
 }
 
-void I2C_close() {
+bool I2C_close() {
+  bool ok = true;
   if (dev_ != nullptr) {
-    (void)I2CDevice::exit();
+    ok = I2CDevice::exit();
     dev_ = nullptr;
   }
+  return ok;
 }
 
 bool I2C_read_bytes(uint8_t dev_address, uint8_t reg_address,

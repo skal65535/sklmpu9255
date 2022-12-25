@@ -80,8 +80,12 @@ int main(int argc, const char* argv[]) {
       CHECK_TRUE(c + 2 < argc, 2);
       const uint8_t dev = ParseByte(argv[++c]);
       const uint8_t reg = ParseByte(argv[++c]);
-      const uint8_t v = I2C_read_byte(dev, reg);
-      LOG("I2C_read_byte(0x%.2x, 0x%.2x) = 0x%.2x\n", dev, reg, v);
+      uint8_t v;
+      if (I2C_read_bytes(dev, reg, &v, 1)) {
+        LOG("I2C_read_byte(0x%.2x, 0x%.2x) = 0x%.2x\n", dev, reg, v);
+      } else {
+        LOG("Error reading dev #0x%.2x, reg #0x%.2x !\n", dev, reg);
+      }
     } else if (!strcmp(argv[c], "-p") || !strcmp(argv[c], "-print")) {
       I2C_print();
       LOG("-------------------------------------------------------\n\n");

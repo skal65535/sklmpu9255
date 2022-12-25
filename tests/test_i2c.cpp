@@ -52,18 +52,16 @@ TEST(Map, TestI2C) {
 TEST(WAI, TestI2C) {
   EXPECT_TRUE(I2C_init());
   I2C_print();
-  const uint32_t WAI_1 =
-      I2C_read_byte(0x68 /* MPU_ADDRESS */, 0x75 /* MPU_WHO_AM_I */);
+  uint8_t WAI_1, WAI_2, WAI_3;
+  EXPECT_TRUE(I2C_read_bytes(0x68 /* MPU_ADDRESS */, 0x75, &WAI_1, 1));
   printf("WAI_1 = 0x%.2x\n", WAI_1);
   EXPECT_TRUE(WAI_1 == 0x70 || WAI_1 == 0x71 || WAI_1 == 0x73);
 
-  const uint32_t WAI_2 =
-      I2C_read_byte(0x0c /* MAG_ADDRESS */, 0x00 /* MAG_WHO_AM_I */);
+  EXPECT_TRUE(I2C_read_bytes(0x0c /* MAG_ADDRESS */, 0x00, &WAI_2, 1));
   printf("WAI_2 = 0x%.2x\n", WAI_2);
   EXPECT_EQ(WAI_2, 0x48);
 
-  const uint32_t WAI_3 =
-      I2C_read_byte(0x6a /* LSM_ADDRESS */, 0x0f /* MAG_WHO_AM_I */);
+  EXPECT_TRUE(I2C_read_bytes(0x6a /* LSM_ADDRESS */, 0x0f, &WAI_3, 1));
   printf("WAI_3 = 0x%.2x\n", WAI_3);
   EXPECT_EQ(WAI_3, 0x6c);
 

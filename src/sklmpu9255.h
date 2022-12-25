@@ -33,7 +33,7 @@
 #if !defined(SKLMPU9255_H_)
 #define SKLMPU9255_H_
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace skl {
 
@@ -42,10 +42,9 @@ namespace skl {
 
 extern bool I2C_init();
 extern bool I2C_reset_device();   // WARNING! hard reset. Will call I2C_Close().
-extern void I2C_close();
+extern bool I2C_close();
 extern void I2C_print();
 extern bool I2C_is_connected(uint8_t address);
-extern uint8_t I2C_read_byte(uint8_t dev_address, uint8_t reg_address);
 extern bool I2C_read_bytes(uint8_t dev_address, uint8_t reg_address,
                            uint8_t values[], uint32_t len);
 extern bool I2C_write_byte(uint8_t dev_address, uint8_t reg_address,
@@ -68,19 +67,17 @@ typedef enum { GYRO_FULL_SCALE_125DPS = 0,  // for LSM6DSOX only
 
 class MPU925x {
  public:
-  static uint8_t id();
-  static uint8_t address();
   static uint8_t WAI() { return 0x71; }
 
   bool init();
-  void close();
+  bool close();
   bool accel(float values[3]);  // in m/s^2
   bool gyro(float values[3]);   // in deg/s
 
   void print() const;
 
-  void set_gyro_scale(gyro_full_scale_t scale);
-  void set_accel_scale(accel_full_scale_t scale);
+  bool set_gyro_scale(gyro_full_scale_t scale);
+  bool set_accel_scale(accel_full_scale_t scale);
   bool calibrate(float accel_bias[3],float gyro_bias[3]);
   bool calibrate() { return calibrate(accel_bias_, gyro_bias_); }
   void reset_bias();
@@ -100,19 +97,17 @@ class MPU925x {
 
 class LSM6DSOX {
  public:
-  static uint8_t id();
-  static uint8_t address();
   static uint8_t WAI() { return 0x6c; }
 
   bool init();
-  void close();
+  bool close();
   bool accel(float values[3]);  // in m/s^2
   bool gyro(float values[3]);   // in deg/s
 
   void print() const;
 
-  void set_gyro_scale(gyro_full_scale_t scale);
-  void set_accel_scale(accel_full_scale_t scale);
+  bool set_gyro_scale(gyro_full_scale_t scale);
+  bool set_accel_scale(accel_full_scale_t scale);
   bool calibrate(float accel_bias[3], float gyro_bias[3]);
   bool calibrate() { return calibrate(accel_bias_, gyro_bias_); }
   void reset_bias();
@@ -131,12 +126,10 @@ class LSM6DSOX {
 
 class AK8963 {
  public:
-  static uint8_t id();
-  static uint8_t address();
   static uint8_t WAI() { return 0x48; }
 
   bool init();
-  void close();
+  bool close();
   bool mag(float values[3]);    // in milliGauss
 
   bool calibrate(float bias[3], float scale[3], float nb_secs = 15.f);
@@ -200,7 +193,7 @@ class MPU {
   bool init(float calibration_secs = 0.f,
             bool ahrs = false,
             int averaging_size = 0 /*off*/);
-  void close();
+  bool close();
 
   bool accel(float values[3]);  // in m/s^2
   bool gyro(float values[3]);   // in deg/s
@@ -209,7 +202,7 @@ class MPU {
 
   bool get_rpy(float rpy[3]);
 
-  void set_full_scales(accel_full_scale_t accel_scale,
+  bool set_full_scales(accel_full_scale_t accel_scale,
                        gyro_full_scale_t gyro_scale);
 
   void print() const;
@@ -221,6 +214,7 @@ class MPU {
   // MPU925x mpu925x_;
   LSM6DSOX mpu925x_;
   AK8963  ak8963_;
+
   QFilter q_filter_;
   bool ahrs_ = false;
   AveragingBuffer avg_gyro_, avg_accel_, avg_mag_;
@@ -229,7 +223,5 @@ class MPU {
 ////////////////////////////////////////////////////////////////////////////////
 
 }  // namespace skl
-
-////////////////////////////////////////////////////////////////////////////////
 
 #endif  // SKLMPU9255_H_
