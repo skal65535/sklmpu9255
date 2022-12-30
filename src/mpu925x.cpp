@@ -37,34 +37,27 @@
 namespace skl {
 
 ////////////////////////////////////////////////////////////////////////////////
-// definitions of sensors addresses
+// definitions of sensors registers
 
 #define MPU_ADDRESS             0x68    // I2C: default MPUxxx device address
 #define MPU_WHO_AM_I            0x75    // self-identify: 0x71, 0x73, 0x70
-// control registers
-#define USER_CTRL               0x6a    // DMP: bit 7: enable, bit 3: reset
-#define PWR_MGMT_1              0x6b
-#define PWR_MGMT_2              0x6c
-#define INT_PIN_CFG             0x37
+#define SMPLRT_DIV              0x19    // sample rate = 1000 / (1 + value) Hz
+#define MPU_CONFIG              0x1a
+#define GYRO_CONFIG             0x1b
 #define ACCEL_CONFIG1           0x1c
 #define ACCEL_CONFIG2           0x1d
-#define MPU_CONFIG              0x1a
-#define SMPLRT_DIV              0x19    // sample rate = 1000 / (1 + value) Hz
-#define GYRO_CONFIG             0x1b
-#define ACCEL_CONFIG            0x1c
 #define FIFO_EN                 0x23
-#define FIFO_COUNT              0x72
-#define FIFO_R_W                0x74
 #define I2C_MST_CTRL            0x24
 #define INT_PIN_CFG             0x37
 #define INT_ENABLE              0x38
-#define TEMPERATURE_OUT         0x41   // 0x41/0x42: OUT_H/L
-
-// accel
 #define ACCEL_OUT               0x3b   // 0x3b->0x40 : XOUT / YOUT / ZOUT
-
-// gyro
+#define TEMPERATURE_OUT         0x41   // 0x41/0x42: OUT_H/L
 #define GYRO_OUT                0x43   // 0x43->0x48 : XOUT / YOUT / ZOUT
+#define USER_CTRL               0x6a    // DMP: bit 7: enable, bit 3: reset
+#define PWR_MGMT_1              0x6b
+#define PWR_MGMT_2              0x6c
+#define FIFO_COUNT              0x72
+#define FIFO_R_W                0x74
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,9 +86,9 @@ bool MPU925x::init() {
   c = (c & 0x04) | 0x00;   // fchoice = 3
   CHECK_WRITE(MPU_ADDRESS, GYRO_CONFIG, c);
 
-  CHECK_READ(MPU_ADDRESS, ACCEL_CONFIG, &d1, 1);
+  CHECK_READ(MPU_ADDRESS, ACCEL_CONFIG1, &d1, 1);
   d1 = (d1 & 0xf8);
-  CHECK_WRITE(MPU_ADDRESS, ACCEL_CONFIG, d1);
+  CHECK_WRITE(MPU_ADDRESS, ACCEL_CONFIG1, d1);
 
   CHECK_READ(MPU_ADDRESS, ACCEL_CONFIG2, &d2, 1);
   d2 = (d2 & 0xf0) | (0x01 << 3) | 0x03;  // fchoice + DLPF 41Hz (3)
@@ -157,6 +150,9 @@ bool MPU925x::set_accel_scale(accel_full_scale_t scale) {
 bool MPU925x::accel(float values[3]) {
   if (!get_3f(MPU_ADDRESS, ACCEL_OUT, accel_scale_, values)) return false;
   for (int i : {0, 1, 2}) values[i] -= accel_scale_ * accel_bias_[i];
+  const float tmp = values[0];
+  values[0] = -values[1];
+  values[1] = tmp;
   return true;
 }
 
@@ -184,21 +180,21 @@ bool MPU925x::calibrate(float accel_bias[3], float gyro_bias[3]) {
   CHECK_WRITE(MPU_ADDRESS, PWR_MGMT_2, 0x00);
   usleep(200 * 1000);
   // setup bias calculation
-  CHECK_WRITE(MPU_ADDRESS, INT_ENABLE, 0x00);    // disable all interrupts
-  CHECK_WRITE(MPU_ADDRESS, FIFO_EN,    0x00);    // disable FIFO
-  CHECK_WRITE(MPU_ADDRESS, PWR_MGMT_1, 0x00);    // turn clock on
-  CHECK_WRITE(MPU_ADDRESS, I2C_MST_CTRL, 0x00);  // disable I2C master
-  CHECK_WRITE(MPU_ADDRESS, USER_CTRL, 0x00);     // disable FIFO and I2C
-  CHECK_WRITE(MPU_ADDRESS, USER_CTRL, 0x0c);     // reset FIFO and DMP
+  CHECK_WRITE(MPU_ADDRESS, INT_ENABLE,    0x00);  // disable all interrupts
+  CHECK_WRITE(MPU_ADDRESS, FIFO_EN,       0x00);  // disable FIFO
+  CHECK_WRITE(MPU_ADDRESS, PWR_MGMT_1,    0x00);  // turn clock on
+  CHECK_WRITE(MPU_ADDRESS, I2C_MST_CTRL,  0x00);  // disable I2C master
+  CHECK_WRITE(MPU_ADDRESS, USER_CTRL,     0x00);  // disable FIFO and I2C
+  CHECK_WRITE(MPU_ADDRESS, USER_CTRL,     0x0c);  // reset FIFO and DMP
   usleep(15 * 1000);
   // configure gyro and accel bias recording
-  CHECK_WRITE(MPU_ADDRESS, MPU_CONFIG,   0x01);  // low-pass filter
-  CHECK_WRITE(MPU_ADDRESS, SMPLRT_DIV,   0x00);  // 1kHz sampling
-  CHECK_WRITE(MPU_ADDRESS, GYRO_CONFIG,  0x00);  // full scale 250dps
-  CHECK_WRITE(MPU_ADDRESS, ACCEL_CONFIG, 0x00);  // full scale 2G
+  CHECK_WRITE(MPU_ADDRESS, MPU_CONFIG,    0x01);  // low-pass filter
+  CHECK_WRITE(MPU_ADDRESS, SMPLRT_DIV,    0x00);  // 1kHz sampling
+  CHECK_WRITE(MPU_ADDRESS, GYRO_CONFIG,   0x00);  // full scale 250dps
+  CHECK_WRITE(MPU_ADDRESS, ACCEL_CONFIG1, 0x00);  // full scale 2G
   // configure FIFO
-  CHECK_WRITE(MPU_ADDRESS, USER_CTRL,    0x40);  // enable FIFO
-  CHECK_WRITE(MPU_ADDRESS, FIFO_EN,      0x78);  // enable gyro & accel
+  CHECK_WRITE(MPU_ADDRESS, USER_CTRL,     0x40);  // enable FIFO
+  CHECK_WRITE(MPU_ADDRESS, FIFO_EN,       0x78);  // enable gyro & accel
   usleep(40 * 1000);   // collect ~40 samples
 
   // extract bias now

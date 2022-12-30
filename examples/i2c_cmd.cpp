@@ -41,17 +41,17 @@ using namespace skl;
 #define CHECK_CALL(CALL, ERR) do {              \
   const bool ok = (CALL);                       \
   if (!ok) {                                    \
-    LOG(#CALL " call failed.");                 \
+    LOG(#CALL " call failed.\n");               \
     I2C_close();                                \
     return (ERR);                               \
   }                                             \
-  LOG("Call to " #CALL " was successful\n");    \
+  LOG("Call to " #CALL " was successful.\n");   \
 } while (false)
 
 #define CHECK_TRUE(CALL, ERR) do {              \
   const bool ok = (CALL);                       \
   if (!ok) {                                    \
-    LOG("Invalid check: " #CALL "\n");          \
+    LOG("Invalid check: " #CALL ".\n");         \
     I2C_close();                                \
     return (ERR);                               \
   }                                             \

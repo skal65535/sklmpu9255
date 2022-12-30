@@ -211,8 +211,8 @@ class MPU {
   bool imu_ok_ = false;
   bool mag_ok_ = false;
 
-  // MPU925x mpu925x_;
-  LSM6DSOX mpu925x_;
+  MPU925x mpu925x_;
+  // LSM6DSOX mpu925x_;
   AK8963  ak8963_;
 
   QFilter q_filter_;

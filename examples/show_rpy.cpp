@@ -44,8 +44,8 @@ using std::vector;
 #include "SDL.h"
 #endif  // USE_SDL
 
-int what = 0;   // 0=raw RPY, 1: angles, 2:accel, 3:mag
-bool mag = false;   // show magneto field
+int what = 0;   // 0=raw RPY, 1: angles, 2:mag, 3:accel
+bool print_values = false;
 int delay_ms = 10;
 
 struct RPYData { float v[3]; };
@@ -60,12 +60,14 @@ void* runThread(void* ptr) {
   const int buf_len = *(int*)ptr;
   buf_pos = 0;
   while (run_thread) {
+    float* const dst = buf[buf_pos].v;
     const bool ok =
-        (what == 0) ? mpu.gyro(buf[buf_pos].v) :
-        (what == 1) ? mpu.get_rpy(buf[buf_pos].v) :
-        (what == 2) ? mpu.mag(buf[buf_pos].v) :
-        (what == 3) ? mpu.accel(buf[buf_pos].v) : false;
+        (what == 0) ? mpu.gyro(dst) :
+        (what == 1) ? mpu.get_rpy(dst) :
+        (what == 2) ? mpu.mag(dst) :
+        (what == 3) ? mpu.accel(dst) : false;
     if (ok) {
+      if (print_values) printf("%.2f %.2f %.2f\n", dst[0], dst[1], dst[2]);
       if (++buf_pos == buf_len) buf_pos = 0;
       usleep(delay_ms * 1000);
     }
@@ -217,6 +219,8 @@ int main(int argc, char **argv) {
       what = 3;
     } else if (!strcmp(argv[c], "-ahrs")) {
       ahrs = true;
+    } else if (!strcmp(argv[c], "-print")) {
+      print_values = true;
     } else if (c + 1 < argc && !strcmp(argv[c], "-cal")) {
       calibrate = atof(argv[++c]);
     } else if (c + 1 < argc && !strcmp(argv[c], "-avg")) {
@@ -278,6 +282,7 @@ int main(int argc, char **argv) {
         case 'a': show_v0 = !show_v0; break;
         case 's': show_v1 = !show_v1; break;
         case 'd': show_v2 = !show_v2; break;
+        case 'p': print_values = !print_values; break;
         case 'g':
           what = (what + 1) % 4;
           printf("showing %s\n", kWhat[what]);
@@ -303,7 +308,7 @@ int main(int argc, char **argv) {
       if (!window->lock()) continue;
       const int H = window->h() - 1;
       int idx = buf_pos;
-      static float kUnits[4] = { 0.01f, 1. / 360., 1. / 200., 30. / 200. };
+      static float kUnits[4] = { 0.01f, 1. / 360., 1. / 2000., 30. / 200. };
       const float scale = H * kUnits[what];
       const float mid = (what == 1) ? H : H / 2;
       int last_v0 = 0, last_v1 = 0, last_v2 = 0;
