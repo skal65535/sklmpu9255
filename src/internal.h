@@ -86,8 +86,8 @@ static inline const char* strip_path(const char* const path) {
   return p == NULL ? path : p + 1;
 }
 #if defined(DEBUG_INTERNAL)
-#define LOG_MSG(fmt, ...) do {                                      \
-  fprintf(stderr, "[%s : %d] ", strip_path(__FILE__), __LINE__);    \
+#define LOG_MSG(fmt, ...) do {                                     \
+  fprintf(stderr, "[%s:%d] ", strip_path(__FILE__), __LINE__);    \
   fprintf(stderr, fmt, ## __VA_ARGS__); } while (false)
 #define CHECK_OK(a) if (!(a)) { LOG_MSG("ERROR: %s\n", #a); return false; }
 #else

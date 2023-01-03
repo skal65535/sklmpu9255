@@ -40,15 +40,14 @@ namespace skl {
 // register map
 
 // AK8963 magnetometer  (cf table 8.1)
+#define MAG_ADDRESS             0x0c
 #define MAG_WHO_AM_I            0x00   // WIA should return 0x48
 #define MAG_ST1                 0x02   // data ready status bit 0
 #define MAG_OUT                 0x03   // 0x03 -> 0x08 : XOUT_L/H YOUT_L/H ZOUT_L/H
 #define MAG_ST2                 0x09   // bit3: data overflow, bit2: error stat
-#define MAG_CNTL1               0x0a   // bit 0-3: MAG_MODE (0x02=8Hz, 0x06=100Hz continuous read)
+#define MAG_CNTL                0x0a   // bit 0-3: MAG_MODE, bit 4: ODR
 #define MAG_ASTC                0x0c   // self-test
 #define MAG_ASA                 0x10   // fuse ROM axis sensitivity adjustment (0x10->0x12)
-
-#define MAG_ADDRESS             0x0c    // AK8963 magnetometer
 
 #define MAG_MODE                0x06    // continuous read @ 100Hz
 
@@ -62,47 +61,54 @@ bool AK8963::init() {
   LOG_MSG("WHO AM I: mag = 0x%.2x [%s]\n", id,
           id == 0x48 ? "AK8963" : "??????");
 
-  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL, 0x00);  // power down
   usleep(10 * 1000);
-  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x0f);  // enter fuse ROM access mode
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL, 0x0f);  // enter fuse ROM access mode
   usleep(10 * 1000);
   uint8_t values[3];
   CHECK_READ(MAG_ADDRESS, MAG_ASA, values, 3);
   mag_asa_f_[0] = 1.f + (values[0] - 128.) / 256.;
   mag_asa_f_[1] = 1.f + (values[1] - 128.) / 256.;
   mag_asa_f_[2] = 1.f + (values[2] - 128.) / 256.;
-  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL, 0x00);  // power down
   usleep(10 * 1000);
   // bit 0-3: MAG_MODE -> 0x02=8Hz, 0x06=100Hz continuous read
   // bit4: 0 = M14BITS, 1 = M16BITS
   const bool use_14b = false;
-  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, (use_14b ? 0x00 : 0x10) | MAG_MODE);
-  usleep(10 * 1000);
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL, (use_14b ? 0x00 : 0x10) | MAG_MODE);
+  usleep(50 * 1000);
   // 1 milliGauss = 10 micro-Tesla.
   mag_scale_ = 10. * 4912. / (use_14b ? 8190. : 32760.);
   return true;
 }
 
 bool AK8963::close() {
-  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL1, 0x00);  // power down
+  CHECK_WRITE(MAG_ADDRESS, MAG_CNTL, 0x00);  // power down
   return true;
 }
 
 bool AK8963::mag(float values[3]) {
-  uint8_t tmp[7];
-  CHECK_READ(MAG_ADDRESS, MAG_ST1, tmp, 1);
-  const uint8_t st1 = tmp[0];
-  if (!(st1 & 1)) return false;  // DRDY: data not ready
-
-  // this also read ST2 as tmp[7] at the end:
-  CHECK_READ(MAG_ADDRESS, MAG_OUT, tmp, 7);
-  if (MAG_MODE == 0x02 || MAG_MODE == 0x04 || MAG_MODE == 0x06) {
-    // if (st1 & 2) return false;   // DOR: Data overrun
+  uint8_t buf[7];
+  const bool is_continuous_read =
+      (MAG_MODE == 0x02 || MAG_MODE == 0x04 || MAG_MODE == 0x06);
+  uint8_t st1 = 0x00;
+  if (MAG_MODE == 0x01 || MAG_MODE == 0x08 || is_continuous_read) {
+    CHECK_READ(MAG_ADDRESS, MAG_ST1, &st1, 1);
+    // DRDY: data not ready, needed for single-measurement and self-test
+    if (MAG_MODE == 0x01 || MAG_MODE == 0x08) {
+      if (!(st1 & 1)) return false;
+    }
+    if (is_continuous_read) {
+//      if (st1 & 2) return false;   // DOR: Data overrun
+    }
   }
-  const uint8_t st2 = tmp[6];
+  // this also reads ST2 as buf[6] at the end:
+  CHECK_READ(MAG_ADDRESS, MAG_OUT, buf, 7);
+  const uint8_t st2 = buf[6];
+  if (st2 & 8) LOG_MSG("Overflow! st2=0x%x\n", st2);
   if (st2 & 8) return false;  // HOFL: measurement overflow
   for (int i : {0, 1, 2}) {
-    const float v = get_16s_le(tmp + 2 * i) * mag_scale_ * mag_asa_f_[i];
+    const float v = get_16s_le(buf + 2 * i) * mag_scale_ * mag_asa_f_[i];
     values[i] = (v  - mag_bias_[i]) * mag_scales_[i];
   }
   return true;

@@ -28,9 +28,9 @@
 
 #include "sklmpu9255.h"
 
+#include <math.h>
 #include <unistd.h>
 #include <algorithm>
-#include <cmath>
 
 namespace skl {
 
@@ -138,7 +138,7 @@ void QFilter::get_rpy(float rpy[3]) const {
   rpy[1] = fmod360(asinf(a32));
 
   const float a12 = 2.f * (qx * qy + qw * qz);
-  const float a22 = qw * qw - qx * qx - qy * qy + qz * qz;
+  const float a22 = qw * qw + qx * qx - qy * qy - qz * qz;
   rpy[2] = fmod360(atan2f(a12, a22));   // magnetic declination?
 }
 
