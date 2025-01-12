@@ -30,13 +30,14 @@ project(
   LANGUAGES CXX C
   VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 option(USE_IMU "Use IMU hardware." ON)
 option(USE_SDL "Use SDL2 for 'show_rpy' example." ON)
 option(USE_THREAD "Use threaded code for 'show_rpy' example." ON)
 option(FAKE_I2C "Use Fake I2C code (debugging)." OFF)
 option(USE_HID "Use HID interface (to mcp2221 e.g.)" ON)
+option(USE_LIBUSB "Use libusb to talk to USB devices (mcp2221 e.g.)" OFF)
 option(BUILD_TESTS "build and run tests" ON)
 
 if(NOT CMAKE_BUILD_TYPE)

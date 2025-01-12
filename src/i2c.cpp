@@ -47,6 +47,11 @@ typedef struct hid_device_info hid_device_info;
 #include <string>
 using std::vector;
 using std::string;
+#elif defined(USE_LIBUSB)
+#include <vector>
+#include <string>
+using std::vector;
+using std::string;
 #elif defined(FAKE_I2C)
 #define I2C_SLAVE 0
 #else
@@ -455,6 +460,11 @@ bool I2C_read_bytes(uint8_t dev_address, uint8_t reg_address,
 bool I2C_write_byte(uint8_t dev_address, uint8_t reg_address, uint8_t value) {
   return (dev_ != nullptr) && dev_->write(dev_address, reg_address, value);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// use libusb to implement I2C interface
+
+#elif defined(USE_LIBUSB)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Unix I2C interface

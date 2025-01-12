@@ -26,8 +26,8 @@
 // Author: skal (pascal.massimino@gmail.com)
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(SKL_MPU9255_INTERNAL_H_)
-#define SKL_MPU9255_INTERNAL_H_
+#if !defined(SKLMPU9255_INTERNAL_H_)
+#define SKLMPU9255_INTERNAL_H_
 
 #include <stdint.h>
 #include <stdio.h>
@@ -102,4 +102,4 @@ static inline const char* strip_path(const char* const path) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif  // SKL_MPU9255_INTERNAL_H_
+#endif  // SKLMPU9255_INTERNAL_H_
