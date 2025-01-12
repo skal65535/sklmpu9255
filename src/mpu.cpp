@@ -132,6 +132,7 @@ bool MPU::get_rpy(float rpy[3]) {
 
 void AveragingBuffer::init(int averaging_size, float v0) {
   pos_ = 0;
+  const int kMaxAvg = (int)AveragingBuffer::kMaxAvg;
   max_pos_ = std::max(1, std::min(averaging_size, kMaxAvg));
   for (int i = 0; i < kMaxAvg; ++i) buf_[0][i] = buf_[1][i] = buf_[2][i] = v0;
 }
